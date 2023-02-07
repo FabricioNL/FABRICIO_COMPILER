@@ -5,9 +5,11 @@ def compiler(expression):
 
     #PRIMEIRA VERIFICACAO
     if expression[0].isdigit() == False:
+        sys.stderr.write('ERROR: FIRST CHARACTER IS NOT A NUMBER')
         sys.exit(1)
     
     if expression[-1].isdigit() == False:
+        sys.stderr.write('ERROR: LAST CHARACTER IS NOT A NUMBER')
         sys.exit(1)
 
     #FLAGS
@@ -19,7 +21,7 @@ def compiler(expression):
     #SEGUNDA VERIFICACAO: DOIS NUMEROS SEGUIDOS
     for i in range(len(split_expression)-1):
             if (split_expression[i].isdigit() == True) and (split_expression[i+1].isdigit() == True):
-                print('NUMBER IN ROW')
+                sys.stderr.write('ERROR: TWO NUMBERS IN ROW')
                 sys.exit(1)
 
     for i in split_expression:
@@ -41,7 +43,7 @@ def compiler(expression):
     #TERCEIRA VERIFICACAO: DOIS OPERADORES SEGUIDOS
     for i in range(len(expression_list)-1):
         if (expression_list[i].isdigit() == False) and (expression_list[i+1].isdigit() == False):
-            print('OPERATOR IN ROW')
+            sys.stderr.write('ERROR: TWO OPERATORS IN ROW')
             sys.exit(1)   
 
     res = eval(new_expression)
