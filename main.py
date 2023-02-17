@@ -1,57 +1,115 @@
 import sys 
 string = sys.argv[1]
 
-def compiler(expression):  
-
-    #PRIMEIRA VERIFICACAO
-    if expression[0].isdigit() == False:
-        sys.stderr.write('ERROR: FIRST CHARACTER IS NOT A NUMBER')
-        sys.exit(1)
+class Token:
     
-    if expression[-1].isdigit() == False:
-        sys.stderr.write('ERROR: LAST CHARACTER IS NOT A NUMBER')
-        sys.exit(1)
+    def __init__(self, type, value):
+        self.type = type
+        self.value = value
 
-    #FLAGS
-    operator_in_row = False
+class Tokenizer:
+    
+    def __init__(self, source, position):
+        self.source = source
+        self.position = position       
+        
+    def selectNext(self):
+        value = ''
+        
+        while (1):           
+            
+            if (self.position < len(self.source)):
+                if self.source[self.position] == ' ': 
+                    self.position += 1
+                    #se a string estiver com algo, precisa retornar
+                    if (value != ''):
+                        self.next = Token('NUMBER', value)
+                        return
+                        
+                    
+                    continue
+                    
+            if (self.position < len(self.source)):
+                if self.source[self.position] == '+' or self.source[self.position] == '-':
+                    if(value == ''):
+                        self.next = Token('OPERATOR', self.source[self.position])
+                        self.position += 1
+                        return
+                    else:
+                        self.next = Token('NUMBER', value)
+                        return
 
-    split_expression = expression.split()
-    new_expression = ''
+            if (self.position < len(self.source)):
+                if (self.source[self.position].isdigit()):
+                        
+                    value += self.source[self.position]
+                    self.position += 1
+    
+            else:
+                if (value == ''): 
+                    self.next = Token('EOF', None)
+                    return
+                
+                self.next = Token('NUMBER', value)
+                return
+        
+class Parse:
+    
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+    
+    @staticmethod
+    def parseExpression(tokenizer):
+        resultado = 0
+        
+        if tokenizer.next.type == 'NUMBER':
+            
+            resultado += int(tokenizer.next.value)
+            tokenizer.selectNext()
+            
+            while tokenizer.next.type == 'OPERATOR':
+                
+                if tokenizer.next.value == '+':
+                    tokenizer.selectNext()
+                    
+                    if tokenizer.next.type == 'NUMBER':
+                        if tokenizer.next.type == 'NUMBER':
+                            resultado += int(tokenizer.next.value)
+                    else:
+                        sys.stderr.write('ERROR: TWO OPERATORS IN A ROW')
+                        sys.exit(1)
+                    
+                        
+                elif tokenizer.next.value == '-':
+                    tokenizer.selectNext()
+                    
+                    if tokenizer.next.type == 'NUMBER':
+                        if tokenizer.next.type == 'NUMBER':
+                            resultado -= int(tokenizer.next.value)
 
-    #SEGUNDA VERIFICACAO: DOIS NUMEROS SEGUIDOS
-    for i in range(len(split_expression)-1):
-            if (split_expression[i].isdigit() == True) and (split_expression[i+1].isdigit() == True):
-                sys.stderr.write('ERROR: TWO NUMBERS IN ROW')
-                sys.exit(1)
-
-    for i in split_expression:
-        new_expression += i
-
-    val_numeric = ''
-    expression_list = []
-
-    for i in new_expression:
-        if i.isdigit():
-            val_numeric += i
+                    else:
+                        sys.stderr.write('ERROR: TWO OPERATORS IN A ROW')
+                        sys.exit(1)
+                        
+                tokenizer.selectNext()
+            
+            return resultado
+        
         else:
-            expression_list.append(val_numeric)
-            expression_list.append(i)
-            val_numeric = ''
-
-    expression_list.append(val_numeric)
-
-    #TERCEIRA VERIFICACAO: DOIS OPERADORES SEGUIDOS
-    for i in range(len(expression_list)-1):
-        if (expression_list[i].isdigit() == False) and (expression_list[i+1].isdigit() == False):
-            sys.stderr.write('ERROR: TWO OPERATORS IN ROW')
-            sys.exit(1)   
-
-    res = eval(new_expression)
-    #print(split_expression)
-    #print(new_expression)
-    #print(expression_list)
-    print(res)
+            sys.stderr.write('ERROR: NUMBER IS NOT THE FIRST TOKEN')
+            sys.exit(1)
     
+    @staticmethod
+    def run(code):
+        tokenizer = Tokenizer(code, 0)
+        tokenizer.selectNext()
+        
+        result = Parse.parseExpression(tokenizer)
 
-compiler(string)
-    
+        if tokenizer.next.type != 'EOF':
+            sys.stderr.write('ERROR: EOF NOT FOUND')
+            sys.exit(1)
+            
+        return result
+
+print(Parse.run(string))
