@@ -1,6 +1,6 @@
 import sys 
 import re 
-string = sys.argv[1]
+#string = sys.argv[1]
 
 
 LIST_TERM = ['*','/']
@@ -49,6 +49,11 @@ class Tokenizer:
                         
                     value += self.source[self.position]
                     self.position += 1
+                
+                #Não é numero, nem operador, nem espaço
+                elif (self.source[self.position] != ' '):
+                    sys.stderr.write('ERROR: INVALID CHARACTER')
+                    sys.exit(1)
     
             else:
                 if (value == ''): 
@@ -146,8 +151,9 @@ class PrePro:
         return code_filtered
     
 
+teste = "1+ * #abc"
         
-print(Parse.run(PrePro.filter(string)))
+print(Parse.run(PrePro.filter(teste)))
 
     
     
