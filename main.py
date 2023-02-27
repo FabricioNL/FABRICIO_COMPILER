@@ -1,6 +1,6 @@
 import sys 
 import re 
-#string = sys.argv[1]
+string = sys.argv[1]
 
 
 LIST_TERM = ['*','/']
@@ -150,10 +150,7 @@ class PrePro:
         code_filtered = re.sub(r"#.*$", "", code)
         return code_filtered
     
-
-teste = "1+ * #abc"
-        
-print(Parse.run(PrePro.filter(teste)))
+print(Parse.run(PrePro.filter(string)))
 
     
     
