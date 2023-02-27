@@ -1,5 +1,10 @@
 import sys 
+import re 
 string = sys.argv[1]
+
+
+LIST_TERM = ['*','/']
+LIST_EXP = ['+','-']
 
 class Token:
     
@@ -30,7 +35,7 @@ class Tokenizer:
                     continue
                     
             if (self.position < len(self.source)):
-                if self.source[self.position] == '+' or self.source[self.position] == '-':
+                if self.source[self.position] == '*' or self.source[self.position] == '/' or self.source[self.position] == '+' or self.source[self.position] == '-':
                     if(value == ''):
                         self.next = Token('OPERATOR', self.source[self.position])
                         self.position += 1
@@ -59,7 +64,7 @@ class Parse:
         self.tokenizer = tokenizer
     
     @staticmethod
-    def parseExpression(tokenizer):
+    def parseTerm(tokenizer):
         resultado = 0
         
         if tokenizer.next.type == 'NUMBER':
@@ -67,25 +72,25 @@ class Parse:
             resultado += int(tokenizer.next.value)
             tokenizer.selectNext()
             
-            while tokenizer.next.type == 'OPERATOR':
+            while tokenizer.next.type == 'OPERATOR' and tokenizer.next.value in LIST_TERM:
                 
-                if tokenizer.next.value == '+':
+                if tokenizer.next.value == '*':
                     tokenizer.selectNext()
                     
                     if tokenizer.next.type == 'NUMBER':
                         if tokenizer.next.type == 'NUMBER':
-                            resultado += int(tokenizer.next.value)
+                            resultado *= int(tokenizer.next.value)
                     else:
                         sys.stderr.write('ERROR: TWO OPERATORS IN A ROW')
                         sys.exit(1)
                     
                         
-                elif tokenizer.next.value == '-':
+                elif tokenizer.next.value == '/':
                     tokenizer.selectNext()
                     
                     if tokenizer.next.type == 'NUMBER':
                         if tokenizer.next.type == 'NUMBER':
-                            resultado -= int(tokenizer.next.value)
+                            resultado = resultado//int(tokenizer.next.value)
 
                     else:
                         sys.stderr.write('ERROR: TWO OPERATORS IN A ROW')
@@ -100,11 +105,31 @@ class Parse:
             sys.exit(1)
     
     @staticmethod
+    def ParseExpression(tokenizer):
+        resultado = 0
+        
+        resultado += Parse.parseTerm(tokenizer)
+        
+        while tokenizer.next.type == 'OPERATOR' and tokenizer.next.value in LIST_EXP:
+            
+            if tokenizer.next.value == '+':
+                tokenizer.selectNext()
+                resultado += Parse.parseTerm(tokenizer)
+                
+            elif tokenizer.next.value == '-':
+                tokenizer.selectNext()
+                resultado -= Parse.parseTerm(tokenizer)
+                
+        return resultado
+        
+        
+    
+    @staticmethod
     def run(code):
         tokenizer = Tokenizer(code, 0)
         tokenizer.selectNext()
         
-        result = Parse.parseExpression(tokenizer)
+        result = Parse.ParseExpression(tokenizer)
 
         if tokenizer.next.type != 'EOF':
             sys.stderr.write('ERROR: EOF NOT FOUND')
@@ -112,4 +137,19 @@ class Parse:
             
         return result
 
-print(Parse.run(string))
+class PrePro:
+    
+    @staticmethod
+    def filter(code):
+        #code_filtered = re.sub(r"#.*\n", "", code, flags=re.MULTILINE)
+        code_filtered = re.sub(r"#.*$", "", code)
+        return code_filtered
+    
+
+        
+print(Parse.run(PrePro.filter(string)))
+
+    
+    
+    
+    
