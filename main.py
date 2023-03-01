@@ -148,6 +148,7 @@ class PrePro:
     def filter(code):
         #code_filtered = re.sub(r"#.*\n", "", code, flags=re.MULTILINE)
         code_filtered = re.sub(r"#.*$", "", code)
+        code_filtered = code_filtered.replace("\n", "")
         return code_filtered
     
 print(Parse.run(PrePro.filter(string)))
