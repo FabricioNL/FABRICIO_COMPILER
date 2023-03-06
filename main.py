@@ -5,6 +5,7 @@ string = sys.argv[1]
 
 LIST_TERM = ['*','/']
 LIST_EXP = ['+','-']
+LIST_PAREN = ['(',')']
 
 class Token:
     
@@ -35,7 +36,7 @@ class Tokenizer:
                     continue
                     
             if (self.position < len(self.source)):
-                if self.source[self.position] == '*' or self.source[self.position] == '/' or self.source[self.position] == '+' or self.source[self.position] == '-':
+                if self.source[self.position] == '*' or self.source[self.position] == '/' or self.source[self.position] == '+' or self.source[self.position] == '-' or self.source[self.position] == '(' or self.source[self.position] == ')':
                     if(value == ''):
                         self.next = Token('OPERATOR', self.source[self.position])
                         self.position += 1
@@ -67,47 +68,58 @@ class Parse:
     
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
-    
+        
     @staticmethod
-    def parseTerm(tokenizer):
+    def parseFactor(tokenizer):
         resultado = 0
         
         if tokenizer.next.type == 'NUMBER':
-            
-            resultado += int(tokenizer.next.value)
+            resultado = int(tokenizer.next.value)
             tokenizer.selectNext()
+            return resultado
             
-            while tokenizer.next.type == 'OPERATOR' and tokenizer.next.value in LIST_TERM:
-                
-                if tokenizer.next.value == '*':
-                    tokenizer.selectNext()
-                    
-                    if tokenizer.next.type == 'NUMBER':
-                        if tokenizer.next.type == 'NUMBER':
-                            resultado *= int(tokenizer.next.value)
-                    else:
-                        sys.stderr.write('ERROR: TWO OPERATORS IN A ROW')
-                        sys.exit(1)
-                    
-                        
-                elif tokenizer.next.value == '/':
-                    tokenizer.selectNext()
-                    
-                    if tokenizer.next.type == 'NUMBER':
-                        if tokenizer.next.type == 'NUMBER':
-                            resultado = resultado//int(tokenizer.next.value)
-
-                    else:
-                        sys.stderr.write('ERROR: TWO OPERATORS IN A ROW')
-                        sys.exit(1)
-                        
-                tokenizer.selectNext()
-            
+        if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '+':
+            sinal = 1
+            tokenizer.selectNext()
+            resultado = sinal * Parse.parseFactor(tokenizer)
             return resultado
         
-        else:
-            sys.stderr.write('ERROR: NUMBER IS NOT THE FIRST TOKEN')
-            sys.exit(1)
+        if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '-':
+            sinal = -1
+            tokenizer.selectNext()
+            resultado = sinal * Parse.parseFactor(tokenizer)
+            return resultado
+
+        if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '(':
+            tokenizer.selectNext()
+            resultado = Parse.ParseExpression(tokenizer)
+            
+            if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == ')':
+                tokenizer.selectNext()
+                return resultado
+            else:
+                sys.stderr.write('ERROR: PARENTHESIS NOT CLOSED')
+                sys.exit(1)
+                
+    @staticmethod
+    def parseTerm(tokenizer):
+        resultado = 0 
+            
+        resultado += Parse.parseFactor(tokenizer)
+        
+        while tokenizer.next.type == 'OPERATOR' and tokenizer.next.value in LIST_TERM:
+            
+            if tokenizer.next.value == '*':
+                tokenizer.selectNext()
+                resultado *= Parse.parseFactor(tokenizer)
+                
+                    
+            elif tokenizer.next.value == '/':
+                tokenizer.selectNext()
+                resultado = resultado//Parse.parseFactor(tokenizer)
+        
+        return resultado
+        
     
     @staticmethod
     def ParseExpression(tokenizer):
