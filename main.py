@@ -7,6 +7,58 @@ LIST_TERM = ['*','/']
 LIST_EXP = ['+','-']
 LIST_PAREN = ['(',')']
 
+class Node:
+    
+    def __init__(self, value):
+        self.value = value
+        self.children = []
+        
+    def evaluate(self):
+        pass            
+    
+
+class BinOp(Node):
+    
+    def __init__(self, value, children):
+        self.value = value
+        self.children = children
+    
+    def evaluate(self):
+        if self.value == "+":
+            return self.children[0].evaluate() + self.children[1].evaluate()
+        if self.value == "-":
+            return self.children[0].evaluate() - self.children[1].evaluate()
+        if self.value == "*":
+            return self.children[0].evaluate() * self.children[1].evaluate()
+        return self.children[0].evaluate() // self.children[1].evaluate()
+
+class UnOp(Node):
+    
+    def  __init__(self, value, children):
+        self.value = value
+        self.children = children
+    
+    def evaluate(self):
+        if self.value == "+":
+            return self.children[0].evaluate()
+        return -1*self.children[0].evaluate()
+
+class IntVal(Node):
+    
+    def __init__(self, value):
+        self.value = value
+    
+    def evaluate(self):
+        return self.value
+
+class NoOp(Node):
+    
+    def __init__(self):
+        self.value = None
+    
+    def evaluate(self):
+        return 0
+
 class Token:
     
     def __init__(self, type, value):
@@ -31,8 +83,7 @@ class Tokenizer:
                     if (value != ''):
                         self.next = Token('NUMBER', value)
                         return
-                        
-                    
+   
                     continue
                     
             if (self.position < len(self.source)):
@@ -71,24 +122,23 @@ class Parse:
         
     @staticmethod
     def parseFactor(tokenizer):
-        resultado = 0
-        
         if tokenizer.next.type == 'NUMBER':
             resultado = int(tokenizer.next.value)
             tokenizer.selectNext()
-            return resultado
+            intval = IntVal(resultado)
+            return intval
             
         if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '+':
-            sinal = 1
             tokenizer.selectNext()
-            resultado = sinal * Parse.parseFactor(tokenizer)
-            return resultado
+            resultado = Parse.parseFactor(tokenizer)
+            unop = UnOp("+", [resultado])
+            return unop
         
         if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '-':
-            sinal = -1
             tokenizer.selectNext()
-            resultado = sinal * Parse.parseFactor(tokenizer)
-            return resultado
+            resultado = Parse.parseFactor(tokenizer)
+            unop = UnOp("-", [resultado])
+            return unop
 
         if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '(':
             tokenizer.selectNext()
@@ -103,56 +153,55 @@ class Parse:
                 
     @staticmethod
     def parseTerm(tokenizer):
-        resultado = 0 
-            
-        resultado += Parse.parseFactor(tokenizer)
+        
+        noUm = Parse.parseFactor(tokenizer)
         
         while tokenizer.next.type == 'OPERATOR' and tokenizer.next.value in LIST_TERM:
             
             if tokenizer.next.value == '*':
                 tokenizer.selectNext()
-                resultado *= Parse.parseFactor(tokenizer)
+                noDois = Parse.parseFactor(tokenizer)
+                noUm = BinOp("*", [noUm, noDois])    
                 
-                    
             elif tokenizer.next.value == '/':
                 tokenizer.selectNext()
-                resultado = resultado//Parse.parseFactor(tokenizer)
+                noDois = Parse.parseFactor(tokenizer)
+                noUm = BinOp("/", [noUm, noDois])
         
-        return resultado
+        return noUm
         
     
     @staticmethod
     def ParseExpression(tokenizer):
-        resultado = 0
         
-        resultado += Parse.parseTerm(tokenizer)
+        noUm = Parse.parseTerm(tokenizer)
         
         while tokenizer.next.type == 'OPERATOR' and tokenizer.next.value in LIST_EXP:
             
             if tokenizer.next.value == '+':
                 tokenizer.selectNext()
-                resultado += Parse.parseTerm(tokenizer)
+                noDois = Parse.parseTerm(tokenizer)
+                noUm = BinOp("+", [noUm, noDois])
                 
             elif tokenizer.next.value == '-':
                 tokenizer.selectNext()
-                resultado -= Parse.parseTerm(tokenizer)
+                noDois = Parse.parseTerm(tokenizer)
+                noUm = BinOp("-", [noUm, noDois])
                 
-        return resultado
+        return noUm
         
-        
-    
     @staticmethod
     def run(code):
         tokenizer = Tokenizer(code, 0)
         tokenizer.selectNext()
         
-        result = Parse.ParseExpression(tokenizer)
+        arvore = Parse.ParseExpression(tokenizer)
 
         if tokenizer.next.type != 'EOF':
             sys.stderr.write('ERROR: EOF NOT FOUND')
             sys.exit(1)
             
-        return result
+        return arvore
 
 class PrePro:
     
@@ -162,8 +211,14 @@ class PrePro:
         code_filtered = re.sub(r"#.*$", "", code)
         code_filtered = code_filtered.replace("\n", "")
         return code_filtered
-    
-print(Parse.run(PrePro.filter(string)))
+
+def read_file(file):
+    with open(file, 'r') as f:
+        return f.read()
+
+test_files = read_file(string)
+
+print(Parse.run(PrePro.filter(test_files)).evaluate())
 
     
     
