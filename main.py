@@ -2,12 +2,11 @@ import sys
 import re 
 string = sys.argv[1]
 
-
-
-LIST_TERM = ['*','/']
-LIST_EXP = ['+','-']
+LIST_TERM = ['*','/', '&&']
+LIST_EXP = ['+','-','||']
 LIST_PAREN = ['(',')']
 LIST_ASSIGN = ['=']
+LIST_REL = ['<','>','==']
 
 LIST_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 
              'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
@@ -41,6 +40,17 @@ class BinOp(Node):
             return self.children[0].evaluate() - self.children[1].evaluate()
         if self.value == "*":
             return self.children[0].evaluate() * self.children[1].evaluate()
+        if self.value == "==":
+            return self.children[0].evaluate() == self.children[1].evaluate()
+        if self.value == "<":
+            return self.children[0].evaluate() < self.children[1].evaluate()
+        if self.value == ">":
+            return self.children[0].evaluate() > self.children[1].evaluate()
+        if self.value == "&&":
+            return self.children[0].evaluate() and self.children[1].evaluate()
+        if self.value == "||":
+            return self.children[0].evaluate() or self.children[1].evaluate()
+        
         return self.children[0].evaluate() // self.children[1].evaluate()
 
 class UnOp(Node):
@@ -50,6 +60,8 @@ class UnOp(Node):
         self.children = children
     
     def evaluate(self):
+        if self.value == "!":
+            return not self.children[0].evaluate()
         if self.value == "+":
             return self.children[0].evaluate()
         return -1*self.children[0].evaluate()
@@ -103,6 +115,14 @@ class Assignment(Node):
     def evaluate(self):
         SymbolTable.setter(self.value, self.children[0].evaluate())
 
+class Read(Node):
+    
+    def __init__(self):
+        pass
+        
+    def evaluate(self):
+        return int(input())
+    
 class Block(Node):
     
     def __init__(self, children):
@@ -111,6 +131,26 @@ class Block(Node):
     def evaluate(self):
         for child in self.children:
             child.evaluate()
+
+class While(Node):
+    
+    def __init__(self, children):
+        self.children = children
+    
+    def evaluate(self):
+        while self.children[0].evaluate():
+            self.children[1].evaluate()
+            
+class If(Node):
+    
+    def __init__(self, children):
+        self.children = children
+    
+    def evaluate(self):
+        if self.children[0].evaluate():
+            self.children[1].evaluate()
+        else:
+            self.children[2].evaluate()
 
 class Print(Node):
         def __init__(self, children):
@@ -125,95 +165,146 @@ class Token:
         self.value = value
 
 class Tokenizer:
-    
+            
     def __init__(self, source, position):
         self.source = source
-        self.position = position       
+        self.position = position 
         
     def selectNext(self):
-        value = ''
+        while (self.position < len(self.source)) and self.source[self.position] == " ": # se for espaço só pula
+            self.position = self.position + 1
+
+        if self.position == len(self.source):
+            self.next = Token("EOF", None)
+
+        elif self.source[self.position].isdigit():
+            value = ""
+            while (self.position < len(self.source)) and (self.source[self.position].isdigit()): # se for digito vai concatenando
+                value = value + self.source[self.position]
+                self.position = self.position + 1
+
+            self.next = Token("NUMBER", value)
+            return 
+
+        elif self.source[self.position] == '*': # se for mult
+            self.next =  Token("OPERATOR", "*")
+            self.position = self.position + 1
+            return
+
+        elif self.source[self.position] == '/': # se for div
+            self.next =  Token("OPERATOR", "/")
+            self.position = self.position + 1
+            return
         
-        while (1):           
+        elif self.source[self.position] == '!': # se for not
+            self.next =  Token("OPERATOR", "!")
+            self.position = self.position + 1
+            return
             
-            if (self.position < len(self.source)):
-                if self.source[self.position] == ' ' or self.source[self.position] in LIST_PAREN or self.source[self.position] in LIST_ASSIGN or self.source[self.position] in LIST_TERM or self.source[self.position] in LIST_EXP or self.source[self.position] == '\n': 
-                    if (self.source[self.position] == ' '):
-                        self.position += 1
-                        continue
-                    #se a string estiver com algo, precisa retornar
-                    if (value != ''):
-                        
-                        if (value.isdigit()):
-                            self.next = Token('NUMBER', value)
-                            return
-   
-                        if (value in LIST_RESERVED_WORDS):
-                            self.next = Token('PRINTLN', value)
-                            return 
-                        
-                        self.next = Token('IDENTIFIER', value)
-                        return
+        elif self.source[self.position] == '+': # se for soma
+            self.next =  Token("OPERATOR", "+")
+            self.position = self.position + 1
+            return
+            
+        elif self.source[self.position] == '-': # se for sub
+            self.next = Token("OPERATOR", "-")
+            self.position = self.position + 1
+            return
 
-                    if (value == '' and (self.source[self.position] in LIST_PAREN or self.source[self.position] in LIST_ASSIGN or self.source[self.position] in LIST_TERM or self.source[self.position] in LIST_EXP)):
-                        self.next = Token('OPERATOR', self.source[self.position])
-                        self.position += 1
-                        return
-                    
-                    if (value == '' and self.source[self.position] == '\n'):
-                        self.next = Token('QUEBRA_LINHA', self.source[self.position])
-                        self.position += 1
-                        return
-   
-                    continue
-                    
-            if (self.position < len(self.source)):
-                if self.source[self.position] == '*' or self.source[self.position] == '/' or self.source[self.position] == '+' or self.source[self.position] == '-' or self.source[self.position] == '(' or self.source[self.position] == ')' or self.source[self.position] == '=':
-                    if(value == ''):
-                        self.next = Token('OPERATOR', self.source[self.position])
-                        self.position += 1
-                        return
-                    else:
-                        self.next = Token('NUMBER', value)
-                        return
+        elif self.source[self.position] == '(': # se for abrir par
+            self.next = Token("OPERATOR", "(")
+            self.position = self.position + 1
+            return
 
-            if (self.position < len(self.source)):
-                
-                if ((value == '')):
-                    #verifica se é uma letra do alfabeto, underscore ou numero
-                    if (self.source[self.position] in LIST_LETTERS or self.source[self.position] in LIST_NUMBERS):
-                        value += self.source[self.position]
-                        self.position += 1
-                    else:
-                        if (self.source[self.position] == '\n'):
-                            self.next = Token("QUEBRA_LINHA", self.source[self.position])
-                            self.position += 1
-                            return
-                        
-                        sys.stderr.write('ERROR: INVALID CHARACTER')
-                        sys.exit(1)
-                
-                elif (value != ''):
-                    if (value.isdigit()):
-                        if (self.source[self.position] in LIST_NUMBERS):
-                            value += self.source[self.position]
-                            self.position += 1
-                        if (self.source[self.position] not in LIST_NUMBERS):
-                            self.next = Token('NUMBER', value)
-                            return
-                    elif (self.source[self.position] in LIST_LETTERS or self.source[self.position] in LIST_NUMBERS):
-                            value += self.source[self.position]
-                            self.position += 1
-                    else:
-                        sys.stderr.write('ERROR: INVALID CHARACTER')  
-                        sys.exit(1)  
-    
+        elif self.source[self.position] == ')': # se for fechar par
+            self.next = Token("OPERATOR", ")")
+            self.position = self.position + 1
+            return
+
+        elif self.source[self.position] == '=': # se for igual
+            self.next = Token("OPERATOR", "=")
+            self.position = self.position + 1
+            return
+        
+        elif self.source[self.position] == '=': # se for igual
+            if self.position + 1 < len(self.source) and self.source[self.position + 1] == '=':
+                self.next = Token("OPERATOR", "==")
+                self.position = self.position + 2
             else:
-                if (value == ''): 
-                    self.next = Token('EOF', None)
-                    return
-                
-                self.next = Token('NUMBER', value)
+                self.next = Token("OPERATOR", "=")
+                self.position = self.position + 1
+            
+            return
+        
+        elif self.source[self.position] == '&': # se for and
+            if self.position + 1 < len(self.source) and self.source[self.position + 1] == '&':
+                self.next = Token("OPERATOR", "&&")
+                self.position = self.position + 2
+                return 
+            
+            sys.stderr.write('ERROR: ONLY ONE &')
+            sys.exit(1)
+            
+        elif self.source[self.position] == '|': # se for or
+            if self.position + 1 < len(self.source) and self.source[self.position + 1] == '|':
+                self.next = Token("OPERATOR", "||")
+                self.position = self.position + 2
+                return 
+            
+            sys.stderr.write('ERROR: ONLY ONE |')
+            sys.exit(1)
+
+        elif self.source[self.position] == '\n': # se for quebra de linha
+            self.next = Token("QUEBRA_LINHA", "\n")
+            self.position = self.position + 1
+
+        elif self.source[self.position] == '>': # se for greather than
+            self.next = Token("GREATER", ">")
+            self.position = self.position + 1
+            return
+
+        elif self.source[self.position] == '<': # se for less than
+            self.next = Token("LESS", "<")
+            self.position = self.position + 1
+            return
+
+        elif self.source[self.position].isalpha():
+
+            value = "" #se for palavra vai concatenando, precisa checar se chegou no final
+            while self.position < len(self.source) and (self.source[self.position].isalpha() or self.source[self.position].isdigit() or self.source[self.position] == "_"): 
+                value = value + self.source[self.position]
+                self.position = self.position + 1
+
+            if value == "while": 
+                self.next = Token("WHILE", value)  
+                return 
+                      
+            elif value == "if":
+               self.next = Token("IF", value)
+               return
+            
+            elif value == "else":
+                self.next = Token("ELSE", value)
                 return
+            
+            elif value == "println":
+                self.next = Token("PRINTLN", value) 
+                return
+            
+            elif value == "readline":
+                self.next = Token("READLINE", value)
+                return
+        
+            elif value == "end":
+                self.next = Token("END", value)
+                return
+            
+            else:
+                self.next = Token("IDENTIFIER", value)
+                return
+        else:
+            sys.stderr.write("Caractere inválido: {}.".format(self.source[self.position]))
+            sys.exit(1)
         
 class Parse:
     
@@ -246,9 +337,17 @@ class Parse:
             unop = UnOp("-", [resultado])
             return unop
 
+
+        if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '!':
+            tokenizer.selectNext()
+            resultado = Parse.parseFactor(tokenizer)
+            unop = UnOp("!", [resultado])
+            return unop
+        
+        
         if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '(':
             tokenizer.selectNext()
-            resultado = Parse.ParseExpression(tokenizer)
+            resultado = Parse.ParseRelExpression(tokenizer)
             
             if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == ')':
                 tokenizer.selectNext()
@@ -256,6 +355,22 @@ class Parse:
             else:
                 sys.stderr.write('ERROR: PARENTHESIS NOT CLOSED')
                 sys.exit(1)
+        
+        if tokenizer.next.value == "readline":
+            tokenizer.selectNext()
+            if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '(':
+                tokenizer.selectNext()
+                if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == ')':
+                    tokenizer.selectNext()
+                    readline = Read()
+                    return readline
+                else:
+                        sys.stderr.write('ERROR: PARENTHESIS NOT CLOSED')
+                        sys.exit(1)
+            else:
+                sys.stderr.write('ERROR: PARENTHESIS NOT OPENED')
+                sys.exit(1)
+            
                 
     @staticmethod
     def parseTerm(tokenizer):
@@ -273,10 +388,39 @@ class Parse:
                 tokenizer.selectNext()
                 noDois = Parse.parseFactor(tokenizer)
                 noUm = BinOp("/", [noUm, noDois])
+                
+            elif tokenizer.next.value == '&&':
+                tokenizer.selectNext()
+                noDois = Parse.parseFactor(tokenizer)
+                noUm = BinOp("&&", [noUm, noDois])
+                
         
         return noUm
         
-    
+    @staticmethod
+    def ParseRelExpression(tokenizer):
+        
+        noUm = Parse.ParseExpression(tokenizer)
+        
+        while (tokenizer.next.type == "GREATER" or tokenizer.next.type == "LESS")  and tokenizer.next.value in LIST_REL:
+            
+            if tokenizer.next.value == '<':
+                tokenizer.selectNext()
+                noDois = Parse.ParseExpression(tokenizer)
+                noUm = BinOp("<", [noUm, noDois])
+            
+            elif tokenizer.next.value == '>':
+                tokenizer.selectNext()
+                noDois = Parse.ParseExpression(tokenizer)
+                noUm = BinOp(">", [noUm, noDois])
+            
+            elif tokenizer.next.value == '==':
+                tokenizer.selectNext()
+                noDois = Parse.ParseExpression(tokenizer)
+                noUm = BinOp("==", [noUm, noDois])
+        
+        return noUm
+            
     @staticmethod
     def ParseExpression(tokenizer):
         
@@ -294,6 +438,11 @@ class Parse:
                 noDois = Parse.parseTerm(tokenizer)
                 noUm = BinOp("-", [noUm, noDois])
                 
+            elif tokenizer.next.value == '||':
+                tokenizer.selectNext()
+                noDois = Parse.parseTerm(tokenizer)
+                noUm = BinOp("||", [noUm, noDois])
+                
         return noUm
     
     @staticmethod
@@ -309,7 +458,6 @@ class Parse:
     @staticmethod
     def ParseStatement(tokenizer):
         if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
-            #tokenizer.selectNext()
             return NoOp()
                 
         if tokenizer.next.value in LIST_RESERVED_WORDS and tokenizer.next.type == 'PRINTLN':
@@ -318,7 +466,7 @@ class Parse:
             if tokenizer.next.value == '(':
                 tokenizer.selectNext()
                 
-                children = [Parse.ParseExpression(tokenizer)]
+                children = [Parse.ParseRelExpression(tokenizer)]
                 
                 if tokenizer.next.value == ')':
                     tokenizer.selectNext()
@@ -330,6 +478,7 @@ class Parse:
             else:
                 sys.stderr.write('ERROR: PARENTHESIS NOT OPENED')
                 sys.exit(1)
+    
         
         if tokenizer.next.type == 'IDENTIFIER':
             name = tokenizer.next.value
@@ -338,19 +487,85 @@ class Parse:
             if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value in LIST_ASSIGN:
                 tokenizer.selectNext()
                 
-                children = [Parse.ParseExpression(tokenizer)]
+                children = [Parse.ParseRelExpression(tokenizer)]
                 
                 return Assignment(name, children)
             
             else:
                 sys.stderr.write('ERROR: EQUALS NOT FOUND')
                 sys.exit(1)
+                
+        if tokenizer.next.value in LIST_RESERVED_WORDS and tokenizer.next.type == 'IF':
+            tokenizer.selectNext()
+            
+            expression = Parse.ParseRelExpression(tokenizer)
+            
+            if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
+                tokenizer.selectNext()
+                
+                if_children = []
+                
+                while tokenizer.next.type != 'END' and tokenizer.next.type != 'ELSE':
+                    if_children.append(Parse.ParseStatement(tokenizer))
+                    tokenizer.selectNext()
+                    
+                block_if = Block(if_children)
+                
+                if tokenizer.next.value == 'else':
+                    tokenizer.selectNext()
+                    
+                    if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
+                        tokenizer.selectNext()
+                        
+                        else_children = []	
+                        
+                        while tokenizer.next.type != 'END':
+                            else_children.append(Parse.ParseStatement(tokenizer))
+                            tokenizer.selectNext()
+                        
+                        block_else = Block(else_children)
+                        
+                        return If([expression, block_if, block_else])
+                    
+                    else:
+                        sys.stderr.write('ERROR: \\n NOT FOUND (ELSE)')
+                        sys.exit(1)
+                
+                if tokenizer.next.type == 'END':
+                    tokenizer.selectNext()
+                    return If([expression, block_if])
+            
+            else:
+                sys.stderr.write('ERROR: \\n NOT FOUND (IF)')
+                sys.exit(1)
+                
+        if tokenizer.next.type == "WHILE" and tokenizer.next.value in LIST_RESERVED_WORDS:
+            tokenizer.selectNext()
+            
+            expression = Parse.ParseRelExpression(tokenizer)
+            
+            if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
+                tokenizer.selectNext()
+                
+                while_children = []
+                
+                while tokenizer.next.type != 'END':
+                    while_children.append(Parse.ParseStatement(tokenizer))
+                    tokenizer.selectNext()
+                
+                #precisa consumir o END 
+                tokenizer.selectNext()
+                block_while = Block(while_children)
+                return While([expression, block_while])
+                
+            else:
+                sys.stderr.write('ERROR: \\n NOT FOUND (WHILE)')
+                sys.exit(1)
+        
         else:
             sys.stderr.write('ERROR: IDENTIFIER NOT FOUND')
             sys.exit(1)
        
-        
-        
     @staticmethod
     def run(code):
         tokenizer = Tokenizer(code, 0)
@@ -375,8 +590,9 @@ def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-test_files = read_file(string)
+#string = 'test.txt'
 
+test_files = read_file(string)
 Parse.run(PrePro.filter(test_files)).evaluate()
 
     
