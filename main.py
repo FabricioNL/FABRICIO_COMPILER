@@ -1,6 +1,6 @@
 import sys 
 import re 
-string = sys.argv[1]
+#string = sys.argv[1]
 
 LIST_TERM = ['*','/', '&&']
 LIST_EXP = ['+','-','||']
@@ -220,11 +220,6 @@ class Tokenizer:
             self.next = Token("OPERATOR", ")")
             self.position = self.position + 1
             return
-
-        elif self.source[self.position] == '=': # se for igual
-            self.next = Token("OPERATOR", "=")
-            self.position = self.position + 1
-            return
         
         elif self.source[self.position] == '=': # se for igual
             if self.position + 1 < len(self.source) and self.source[self.position + 1] == '=':
@@ -402,7 +397,7 @@ class Parse:
         
         noUm = Parse.ParseExpression(tokenizer)
         
-        while (tokenizer.next.type == "GREATER" or tokenizer.next.type == "LESS")  and tokenizer.next.value in LIST_REL:
+        while (tokenizer.next.type == "GREATER" or tokenizer.next.type == "LESS" or tokenizer.next.type == "OPERATOR")  and tokenizer.next.value in LIST_REL:
             
             if tokenizer.next.value == '<':
                 tokenizer.selectNext()
@@ -590,7 +585,7 @@ def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-#string = 'test.txt'
+string = 'test.txt'
 
 test_files = read_file(string)
 Parse.run(PrePro.filter(test_files)).evaluate()
