@@ -1,6 +1,6 @@
 import sys 
 import re 
-#string = sys.argv[1]
+string = sys.argv[1]
 
 LIST_TERM = ['*','/', '&&']
 LIST_EXP = ['+','-','||']
@@ -585,7 +585,7 @@ def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-string = 'test.txt'
+#string = 'test.txt'
 
 test_files = read_file(string)
 Parse.run(PrePro.filter(test_files)).evaluate()
