@@ -150,7 +150,9 @@ class If(Node):
         if self.children[0].evaluate():
             self.children[1].evaluate()
         else:
-            self.children[2].evaluate()
+            if len(self.children) == 3:
+                #basicamente verifica se tem um else, o if não obrigatoriamente vai ser verdade
+                self.children[2].evaluate()
 
 class Print(Node):
         def __init__(self, children):
@@ -464,7 +466,7 @@ class Parse:
                 children = [Parse.ParseRelExpression(tokenizer)]
                 
                 if tokenizer.next.value == ')':
-                    tokenizer.selectNext()
+                    #tokenizer.selectNext()
                     return Print(children)
                 
                 else:
