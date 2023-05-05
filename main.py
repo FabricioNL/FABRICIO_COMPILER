@@ -3,7 +3,7 @@ import re
 string = sys.argv[1]
 
 LIST_TERM = ['*','/', '&&']
-LIST_EXP = ['+','-','||']
+LIST_EXP = ['+','-','||', "."]
 LIST_PAREN = ['(',')']
 LIST_ASSIGN = ['=']
 LIST_REL = ['<','>','==']
@@ -33,25 +33,59 @@ class BinOp(Node):
         self.value = value
         self.children = children
     
+    
+    
     def evaluate(self):
-        if self.value == "+":
-            return self.children[0].evaluate() + self.children[1].evaluate()
-        if self.value == "-":
-            return self.children[0].evaluate() - self.children[1].evaluate()
-        if self.value == "*":
-            return self.children[0].evaluate() * self.children[1].evaluate()
-        if self.value == "==":
-            return self.children[0].evaluate() == self.children[1].evaluate()
-        if self.value == "<":
-            return self.children[0].evaluate() < self.children[1].evaluate()
-        if self.value == ">":
-            return self.children[0].evaluate() > self.children[1].evaluate()
-        if self.value == "&&":
-            return self.children[0].evaluate() and self.children[1].evaluate()
-        if self.value == "||":
-            return self.children[0].evaluate() or self.children[1].evaluate()
+        direita = self.children[0].evaluate()
         
-        return self.children[0].evaluate() // self.children[1].evaluate()
+        #teste
+        #direita = direita[1].evaluate()
+        
+        esquerda = self.children[1].evaluate()
+        
+        if self.value == "+":
+            if direita[0] == "Int" and esquerda[0] == "Int":
+                return ["Int", direita[1] + esquerda[1]]
+        if self.value == "-":
+            if direita[0] == "Int" and esquerda[0] == "Int":
+                return ["Int", direita[1] - esquerda[1]]
+        if self.value == "*":
+            if direita[0] == "Int" and esquerda[0] == "Int":
+                return ["Int", direita[1] * esquerda[1]]
+        if self.value == "==":
+            if direita[1] == esquerda[1]:
+                return ["Int", 1]
+            return ["Int", 0]
+                #return ["Int", direita[1] == esquerda[1]]
+        if self.value == "<":
+            #if direita[0] == "Int" and esquerda[0] == "Int":
+            if direita[1] < esquerda[1]:
+                return ["Int", 1]
+            return ["Int", 0]
+                #return ["Int", direita[1] < esquerda[1]]
+        if self.value == ">":
+            #if direita[0] == "Int" and esquerda[0] == "Int":
+            if direita[1] > esquerda[1]:
+                return ["Int", 1]
+            return ["Int", 0]
+                #return ["Int", direita[1] > esquerda[1]]
+        if self.value == "&&":
+            if direita[0] == "Int" and esquerda[0] == "Int":
+                if direita[1] and esquerda[1]:
+                    return ["Int", 1]
+                return ["Int", 0]
+                #return ["Int", direita[1] and esquerda[1]]
+        if self.value == "||":
+            if direita[0] == "Int" and esquerda[0] == "Int":
+                if direita[1] or esquerda[1]:
+                    return ["Int", 1]
+                return ["Int", 0]
+                #return ["Int", direita[1] or esquerda[1]]
+        if self.value == ".":
+                return ["String", str(direita[1]) + str(esquerda[1])]
+        if self.value == "/":
+            if direita[0] == "Int" and esquerda[0] == "Int":
+                return ["Int", direita[1] // esquerda[1]]
 
 class UnOp(Node):
     
@@ -60,11 +94,20 @@ class UnOp(Node):
         self.children = children
     
     def evaluate(self):
-        if self.value == "!":
-            return not self.children[0].evaluate()
-        if self.value == "+":
-            return self.children[0].evaluate()
-        return -1*self.children[0].evaluate()
+        
+        no = self.children[0].evaluate()
+        
+        if no[0] == "Int":
+            if self.value == "!":
+                var =  not no[1]
+                return ["Int", var]
+            if self.value == "+":
+                return ["Int", no[1]]
+            return ["Int", -1*no[1]]
+    
+        #QUEBRA AQUI =)
+        sys.stderr.write('ERROR: TRIED UNOP WITH A STRING')
+        sys.exit(1)
 
 class IntVal(Node):
     
@@ -72,7 +115,15 @@ class IntVal(Node):
         self.value = value
     
     def evaluate(self):
-        return self.value
+        return ["Int", int(self.value)]
+    
+class StringVal(Node):
+    
+    def __init__(self, value):
+        self.value = value
+    
+    def evaluate(self):
+        return ["String", str(self.value)]
 
 class NoOp(Node):
     
@@ -103,7 +154,30 @@ class SymbolTable:
         sys.exit(1)
         
     def setter(key, value):
-        SymbolTable.table[key] = value
+        #printa o key e value
+        
+        
+        #verificar se a o value[0] guardado tem o mesmo tipo do novo value a ser guardado, senao, erro
+        if key in SymbolTable.table:
+            if SymbolTable.table[key][0] != value[0]:
+                sys.stderr.write('ERROR: VALUE TYPE NOT MATCHING')
+                sys.exit(1)
+                
+            SymbolTable.table[key] = value
+            return
+
+        sys.stderr.write('ERROR: KEY NOT DECLARED')
+        sys.exit(1)
+        
+    def create(key, value):
+        
+        #verificar se a chave existe, senão, erro
+        if key in SymbolTable.table:
+            sys.stderr.write('ERROR: KEY ALREADY EXISTS')
+            sys.exit(1)
+            
+        SymbolTable.table[key] = value        
+        
         
 class Assignment(Node):
     
@@ -114,14 +188,33 @@ class Assignment(Node):
     
     def evaluate(self):
         SymbolTable.setter(self.value, self.children[0].evaluate())
+        
 
+class VarDec(Node):
+    
+    def __init__(self, value, children):
+        self.value = value
+        self.children = children
+    
+    def evaluate(self):
+        if len(self.children) == 1:
+            if self.value == "Int":
+                SymbolTable.create(self.children[0], [self.value, 0])  
+            elif self.value == "String":
+                SymbolTable.create(self.children[0], [self.value, ""]) 
+        elif len(self.children) == 2:
+            if self.value == "Int" and self.children[1].evaluate()[0] == "Int":
+                SymbolTable.create("Int", [self.value, self.children[1].evaluate()[1]])
+            if self.value == "String" and self.children[1].evaluate()[0] == "String":
+                SymbolTable.create("String", [self.value, self.children[1].evaluate()[1]])
+            
 class Read(Node):
     
     def __init__(self):
         pass
         
     def evaluate(self):
-        return int(input())
+        return ["Int", int(input())]
     
 class Block(Node):
     
@@ -138,7 +231,8 @@ class While(Node):
         self.children = children
     
     def evaluate(self):
-        while self.children[0].evaluate():
+        #print(self.children[0].evaluate())
+        while self.children[0].evaluate()[1]:
             self.children[1].evaluate()
             
 class If(Node):
@@ -147,7 +241,8 @@ class If(Node):
         self.children = children
     
     def evaluate(self):
-        if self.children[0].evaluate():
+        #print(self.children[0].evaluate()[1])
+        if self.children[0].evaluate()[1]:
             self.children[1].evaluate()
         else:
             if len(self.children) == 3:
@@ -159,7 +254,8 @@ class Print(Node):
             self.children = children
         
         def evaluate(self):
-            print(self.children[0].evaluate())    
+            pt1 = self.children[0].evaluate()
+            print(pt1[1])    
 class Token:
     
     def __init__(self, type, value):
@@ -213,6 +309,12 @@ class Tokenizer:
             self.position = self.position + 1
             return
 
+
+        elif self.source[self.position] == ".":
+            self.next = Token("OPERATOR", ".")
+            self.position = self.position + 1
+            return
+            
         elif self.source[self.position] == '(': # se for abrir par
             self.next = Token("OPERATOR", "(")
             self.position = self.position + 1
@@ -229,6 +331,17 @@ class Tokenizer:
                 self.position = self.position + 2
             else:
                 self.next = Token("OPERATOR", "=")
+                self.position = self.position + 1
+            
+            return
+        
+        elif self.source[self.position] == ':':
+            if self.position + 1 < len(self.source) and self.source[self.position + 1] == ':':
+                self.next = Token("OPERATOR", "::")
+                self.position = self.position + 2
+                return
+            else:
+                self.next = Token("OPERATOR", ":")
                 self.position = self.position + 1
             
             return
@@ -264,6 +377,22 @@ class Tokenizer:
             self.next = Token("LESS", "<")
             self.position = self.position + 1
             return
+        
+        elif self.source[self.position] == '"': # se for string, vai concatenando até achar o fechamento
+            self.position = self.position + 1
+            value = ""
+            
+            while self.position < len(self.source) and self.source[self.position] != '"':
+                value = value + self.source[self.position]
+                self.position = self.position + 1
+            
+            #lembrete: colocar um std error :) 
+            
+            #para consumir o fechamento (") 
+            self.position = self.position + 1
+            self.next = Token("STRING", value)
+            return 
+            
 
         elif self.source[self.position].isalpha():
 
@@ -296,6 +425,14 @@ class Tokenizer:
                 self.next = Token("END", value)
                 return
             
+            elif value == "Int":
+                self.next = Token("TYPE", value)
+                return 
+            
+            elif value == "String":
+                self.next = Token("TYPE", value)
+                return
+            
             else:
                 self.next = Token("IDENTIFIER", value)
                 return
@@ -321,6 +458,12 @@ class Parse:
             tokenizer.selectNext()
             identi = Identifier(name)
             return identi
+        
+        if tokenizer.next.type == 'STRING':
+            name = tokenizer.next.value
+            tokenizer.selectNext()
+            stringVal = StringVal(name)
+            return stringVal
                 
         if tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '+':
             tokenizer.selectNext()
@@ -430,6 +573,11 @@ class Parse:
                 noDois = Parse.parseTerm(tokenizer)
                 noUm = BinOp("+", [noUm, noDois])
                 
+            if tokenizer.next.value == ".":
+                tokenizer.selectNext()
+                noDois = Parse.parseTerm(tokenizer)
+                noUm = BinOp(".", [noUm, noDois])
+                
             elif tokenizer.next.value == '-':
                 tokenizer.selectNext()
                 noDois = Parse.parseTerm(tokenizer)
@@ -448,13 +596,13 @@ class Parse:
         
         while tokenizer.next.type != 'EOF':
             children.append(Parse.ParseStatement(tokenizer))
-            tokenizer.selectNext()
-        
+            
         return Block(children)
     
     @staticmethod
     def ParseStatement(tokenizer):
         if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
+            tokenizer.selectNext()
             return NoOp()
                 
         if tokenizer.next.value in LIST_RESERVED_WORDS and tokenizer.next.type == 'PRINTLN':
@@ -466,7 +614,7 @@ class Parse:
                 children = [Parse.ParseRelExpression(tokenizer)]
                 
                 if tokenizer.next.value == ')':
-                    #tokenizer.selectNext()
+                    tokenizer.selectNext()
                     return Print(children)
                 
                 else:
@@ -488,6 +636,47 @@ class Parse:
                 
                 return Assignment(name, children)
             
+            elif tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '::':
+                
+                tokenizer.selectNext()
+                
+                if tokenizer.next.type == "TYPE" and tokenizer.next.value == "Int":
+                    
+                    tokenizer.selectNext()
+                    
+                    if tokenizer.next.type == "QUEBRA_LINHA" and tokenizer.next.value == '\n':
+                        tokenizer.selectNext()
+                        
+                        children = [name]
+                        
+                        return VarDec("Int", children)
+                    
+                    elif tokenizer.next.type == "OPERATOR" and tokenizer.next.value == "=":
+                        tokenizer.selectNext()
+                        
+                        children = [name, Parse.ParseRelExpression(tokenizer)]
+                        
+                        return VarDec("Int", children)
+                    
+                    
+                if tokenizer.next.type == "TYPE" and tokenizer.next.value == "String":
+                    
+                    tokenizer.selectNext()
+                    
+                    if tokenizer.next.type == "QUEBRA_LINHA" and tokenizer.next.value == '\n':
+                        tokenizer.selectNext()
+                        
+                        children = [name]
+                        
+                        return VarDec("String", children)
+                    
+                    elif tokenizer.next.type == "OPERATOR" and tokenizer.next.value == "=":
+                        tokenizer.selectNext()
+                        
+                        children = [name, Parse.ParseRelExpression(tokenizer)]
+                        
+                        return VarDec("String", children)
+                    
             else:
                 sys.stderr.write('ERROR: EQUALS NOT FOUND')
                 sys.exit(1)
@@ -522,6 +711,8 @@ class Parse:
                         
                         block_else = Block(else_children)
                         
+                        #novo trecho que faltava, consumir o end
+                        tokenizer.selectNext()
                         return If([expression, block_if, block_else])
                     
                     else:
