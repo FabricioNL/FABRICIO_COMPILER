@@ -1,6 +1,6 @@
 import sys 
 import re 
-string = sys.argv[1]
+#string = sys.argv[1]
 
 LIST_TERM = ['*','/', '&&']
 LIST_EXP = ['+','-','||', "."]
@@ -204,9 +204,9 @@ class VarDec(Node):
                 SymbolTable.create(self.children[0], [self.value, ""]) 
         elif len(self.children) == 2:
             if self.value == "Int" and self.children[1].evaluate()[0] == "Int":
-                SymbolTable.create("Int", [self.value, self.children[1].evaluate()[1]])
+                SymbolTable.create(self.children[0], [self.value, self.children[1].evaluate()[1]])
             if self.value == "String" and self.children[1].evaluate()[0] == "String":
-                SymbolTable.create("String", [self.value, self.children[1].evaluate()[1]])
+                SymbolTable.create(self.children[0], [self.value, self.children[1].evaluate()[1]])
             
 class Read(Node):
     
@@ -778,8 +778,8 @@ def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-#string = 'test.txt'
-
+string = 'test.txt'
+#string = sys.argv[1]
 test_files = read_file(string)
 Parse.run(PrePro.filter(test_files)).evaluate()
 
