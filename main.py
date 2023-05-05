@@ -778,8 +778,8 @@ def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-string = 'test.txt'
-#string = sys.argv[1]
+#string = 'test.txt'
+string = sys.argv[1]
 test_files = read_file(string)
 Parse.run(PrePro.filter(test_files)).evaluate()
 
