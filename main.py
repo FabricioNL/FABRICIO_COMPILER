@@ -1000,19 +1000,22 @@ class PrePro:
     @staticmethod
     def filter(code):
         code_filtered = re.sub(r'#.*\n', '', code, flags=re.MULTILINE).replace("\s", "")
-        print(code_filtered)
-        return code_filtered
+        
+        sys.stderr.write(code_filtered)
+        sys.exit(1)
+        
+        #return code_filtered
 
 
 def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-#string = 'test.txt'
-#archive_name = "testaa.jl"
+string = 'test1.txt'
+archive_name = "teste1.txt"
 
-string = sys.argv[1]
-archive_name = sys.argv[0]
+#string = sys.argv[1]
+#archive_name = sys.argv[0]
 
 test_files = read_file(string)
 Parse.run(PrePro.filter(test_files), archive_name)
