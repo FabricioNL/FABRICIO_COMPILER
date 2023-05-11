@@ -977,8 +977,8 @@ class Parse:
         
         else:
             #printa o token que deu erro
+            sys.stderr.write('ERROR: NAO CONSEGUIU CONSUMIR O TOKEN')
             sys.stderr.write(codigo_fonte)
-            #sys.stderr.write(codigo_fonte)
             sys.exit(1)
        
     @staticmethod
@@ -1011,11 +1011,11 @@ def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-#string = 'test1.txt'
-#archive_name = "teste1.txt"
+string = 'test142.txt'
+archive_name = string
 
-string = sys.argv[1]
-archive_name = sys.argv[0]
+#string = sys.argv[1]
+#archive_name = sys.argv[0]
 
 test_files = read_file(string)
 Parse.run(PrePro.filter(test_files), archive_name)
