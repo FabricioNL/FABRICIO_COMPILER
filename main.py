@@ -975,7 +975,7 @@ class Parse:
         
         else:
             #printa o token que deu erro
-            sys.stderr.write('ERROR: TOKEN NOT FOUND')
+            sys.stderr.write('ERROR: TOKEN NOT FOUND ' + str(tokenizer.next.value))
             sys.exit(1)
        
     @staticmethod
