@@ -17,6 +17,8 @@ LIST_NUMBERS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 LIST_RESERVED_WORDS = ['println', 'if', 'else', 'while', 'for', 'int', 'float', 'char', 'string', 
                        'bool', 'true', 'false', 'return', 'break', 'continue', 'and', 'or', 'not']
 
+codigo_fonte = ""
+
 class Assembly:
     code = ""
     filename = ""
@@ -975,7 +977,8 @@ class Parse:
         
         else:
             #printa o token que deu erro
-            sys.stderr.write('ERROR: TOKEN NOT FOUND ' + str(tokenizer.next.value))
+            sys.stderr.write('ERROR: TOKEN NOT FOUND: ' + codigo_fonte)
+            #sys.stderr.write(codigo_fonte)
             sys.exit(1)
        
     @staticmethod
@@ -1000,11 +1003,8 @@ class PrePro:
     @staticmethod
     def filter(code):
         code_filtered = re.sub(r'#.*\n', '', code, flags=re.MULTILINE).replace("\s", "")
-        
-        sys.stderr.write(code_filtered)
-        sys.exit(1)
-        
-        #return code_filtered
+        codigo_fonte = code_filtered 
+        return code_filtered
 
 
 def read_file(file):
