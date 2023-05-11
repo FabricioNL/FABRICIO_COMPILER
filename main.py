@@ -974,7 +974,8 @@ class Parse:
                 sys.exit(1)
         
         else:
-            sys.stderr.write('ERROR: IDENTIFIER NOT FOUND')
+            #printa o token que deu erro
+            sys.stderr.write('ERROR: TOKEN NOT FOUND')
             sys.exit(1)
        
     @staticmethod
@@ -999,6 +1000,7 @@ class PrePro:
     @staticmethod
     def filter(code):
         code_filtered = re.sub(r'#.*\n', '', code, flags=re.MULTILINE).replace("\s", "")
+        print(code_filtered)
         return code_filtered
 
 
