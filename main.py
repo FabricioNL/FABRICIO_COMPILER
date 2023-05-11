@@ -17,12 +17,181 @@ LIST_NUMBERS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 LIST_RESERVED_WORDS = ['println', 'if', 'else', 'while', 'for', 'int', 'float', 'char', 'string', 
                        'bool', 'true', 'false', 'return', 'break', 'continue', 'and', 'or', 'not']
 
+class Assembly:
+    code = ""
+    filename = ""
+
+    footer = """; interrupcao de saida
+    POP EBP
+    MOV EAX, 1
+    INT 0x80"""
+
+    header = """; constantes
+    SYS_EXIT equ 1
+    SYS_READ equ 3
+    SYS_WRITE equ 4
+    STDIN equ 0
+    STDOUT equ 1
+    True equ 1
+    False equ 0
+
+    segment .data
+
+    segment .bss  ; variaveis
+      res RESB 1
+
+    section .text
+      global _start
+
+    print:  ; subrotina print
+
+      PUSH EBP ; guarda o base pointer
+      MOV EBP, ESP ; estabelece um novo base pointer
+
+      MOV EAX, [EBP+8] ; 1 argumento antes do RET e EBP
+      XOR ESI, ESI
+
+    print_dec: ; empilha todos os digitos
+      MOV EDX, 0
+      MOV EBX, 0x000A
+      DIV EBX
+      ADD EDX, '0'
+      PUSH EDX
+      INC ESI ; contador de digitos
+      CMP EAX, 0
+      JZ print_next ; quando acabar pula
+      JMP print_dec
+
+    print_next:
+      CMP ESI, 0
+      JZ print_exit ; quando acabar de imprimir
+      DEC ESI
+
+      MOV EAX, SYS_WRITE
+      MOV EBX, STDOUT
+
+      POP ECX
+      MOV [res], ECX
+      MOV ECX, res
+
+      MOV EDX, 1
+      INT 0x80
+      JMP print_next
+
+    print_exit:
+      POP EBP
+      RET
+
+    ; subrotinas if/while
+    binop_je:
+      JE binop_true
+      JMP binop_false
+
+    binop_jg:
+      JG binop_true
+      JMP binop_false
+
+    binop_jl:
+      JL binop_true
+      JMP binop_false
+
+    binop_false:
+      MOV EBX, False
+      JMP binop_exit
+    binop_true:
+      MOV EBX, True
+    binop_exit:
+      RET
+
+    _start:
+
+      PUSH EBP ; guarda o base pointer
+      MOV EBP, ESP ; estabelece um novo base pointer
+      
+      ; codigo gerado pelo compilador
+      """
+
+    def __init__(self, filename):
+        self.filename = filename
+
+    @staticmethod
+    def joinCode(string):
+        Assembly.code += string + '\n'
+
+    @staticmethod
+    def getCode():
+        return Assembly.code
+    
+    @staticmethod
+    def setFileName(filename):
+        Assembly.filename = filename.split('.')[0] + '.asm'
+        #print(Assembly.filename)
+    
+    @staticmethod
+    def compileCode():
+        with open(Assembly.filename, 'a') as file:
+            file.write(Assembly.header + '\n' + Assembly.code + '\n' + Assembly.footer + '\n')
+    
+    @staticmethod
+    def printToFile(self, filename, code):
+        with open(filename, 'a') as file:
+            file.write(code + '\n')
+
+
+class SymbolTable:
+     
+    table = {}
+    addr = -4
+                
+    def getter(key):
+        #verificar se a chave existe, senão, erro
+        if key in SymbolTable.table:
+            return SymbolTable.table[key]
+        
+        sys.stderr.write('ERROR: KEY NOT DECLARED')
+        sys.exit(1)
+        
+    def setter(key, value):
+        #printa o key e value
+        
+        #verificar se a o value[0] guardado tem o mesmo tipo do novo value a ser guardado, senao, erro
+        if key in SymbolTable.table:
+            if SymbolTable.table[key][0] != value[0]:
+                sys.stderr.write('ERROR: VALUE TYPE NOT MATCHING')
+                sys.exit(1)
+
+            old_value_addr = SymbolTable.table[key][2]
+            value.append(old_value_addr)
+            SymbolTable.table[key] = value
+            return
+
+        sys.stderr.write('ERROR: KEY NOT DECLARED')
+        sys.exit(1)
+        
+    def create(key, value):
+        
+        #verificar se a chave existe, senão, erro
+        if key in SymbolTable.table:
+            sys.stderr.write('ERROR: KEY ALREADY EXISTS')
+            sys.exit(1)
+            
+        value.append(SymbolTable.addr)
+        #print(value)
+        SymbolTable.table[key] = value
+        SymbolTable.addr -= 4
+
 class Node:
     
+    id = 0
+
     def __init__(self, value):
         self.value = value
         self.children = []
         
+    def new_id():
+        Node.id += 1
+        return Node.id
+    
     def evaluate(self):
         pass            
     
@@ -32,51 +201,82 @@ class BinOp(Node):
     def __init__(self, value, children):
         self.value = value
         self.children = children
-    
-    
-    
+        self.id = Node.new_id()
     def evaluate(self):
         direita = self.children[0].evaluate()
         
-        #teste
-        #direita = direita[1].evaluate()
         
+        Assembly.joinCode("PUSH EBX")
         esquerda = self.children[1].evaluate()
-        
+        Assembly.joinCode("POP EAX")
+
         if self.value == "+":
             if direita[0] == "Int" and esquerda[0] == "Int":
+                
+                ##Assembly.printToFile(self, 'teseee.txt', "ADD EAX, EBX")
+                Assembly.joinCode("ADD EAX, EBX")
+                ##Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
+                Assembly.joinCode("MOV EBX, EAX")
+
                 return ["Int", direita[1] + esquerda[1]]
         if self.value == "-":
             if direita[0] == "Int" and esquerda[0] == "Int":
+                
+                ##Assembly.printToFile(self, 'teseee.txt', "SUB EAX, EBX")
+                Assembly.joinCode("SUB EAX, EBX")
+                ###Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
+                Assembly.joinCode("MOV EBX, EAX")
                 return ["Int", direita[1] - esquerda[1]]
         if self.value == "*":
             if direita[0] == "Int" and esquerda[0] == "Int":
+                
+                ##Assembly.printToFile(self, 'teseee.txt', "IMUL EAX, EBX")
+                Assembly.joinCode("IMUL EAX, EBX")
+                ##Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
+                Assembly.joinCode("MOV EBX, EAX")
                 return ["Int", direita[1] * esquerda[1]]
         if self.value == "==":
+            ##Assembly.printToFile(self, 'teseee.txt', "CMP EAX, EBX")
+            Assembly.joinCode("CMP EAX, EBX")
+            ##Assembly.printToFile(self, 'teseee.txt', "CALL binop_je")
+            Assembly.joinCode("CALL binop_je")
+
             if direita[1] == esquerda[1]:
                 return ["Int", 1]
             return ["Int", 0]
-                #return ["Int", direita[1] == esquerda[1]]
         if self.value == "<":
-            #if direita[0] == "Int" and esquerda[0] == "Int":
+            ##Assembly.printToFile(self, 'teseee.txt', "CMP EAX, EBX")
+            Assembly.joinCode("CMP EAX, EBX")
+            ##Assembly.printToFile(self, 'teseee.txt', "CALL binop_jl")
+            Assembly.joinCode("CALL binop_jl")
             if direita[1] < esquerda[1]:
                 return ["Int", 1]
             return ["Int", 0]
                 #return ["Int", direita[1] < esquerda[1]]
         if self.value == ">":
-            #if direita[0] == "Int" and esquerda[0] == "Int":
+            ##Assembly.printToFile(self, 'teseee.txt', "CMP EAX, EBX")
+            Assembly.joinCode("CMP EAX, EBX")
+            #Assembly.printToFile(self, 'teseee.txt', "CALL binop_jg")
+            Assembly.joinCode("CALL binop_jg")
             if direita[1] > esquerda[1]:
                 return ["Int", 1]
             return ["Int", 0]
-                #return ["Int", direita[1] > esquerda[1]]
         if self.value == "&&":
             if direita[0] == "Int" and esquerda[0] == "Int":
+                #Assembly.printToFile(self, 'teseee.txt', "AND EAX, EBX")
+                Assembly.joinCode("AND EAX, EBX")
+                #Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
+                Assembly.joinCode("MOV EBX, EAX")
                 if direita[1] and esquerda[1]:
                     return ["Int", 1]
                 return ["Int", 0]
                 #return ["Int", direita[1] and esquerda[1]]
         if self.value == "||":
             if direita[0] == "Int" and esquerda[0] == "Int":
+                #Assembly.printToFile(self, 'teseee.txt', "AND EAX, EBX")
+                Assembly.joinCode("AND EAX, EBX")
+                #Assembly.printToFile(self, 'teseee.txt', "OR EBX, EAX")
+                Assembly.joinCode("OR EBX, EAX")
                 if direita[1] or esquerda[1]:
                     return ["Int", 1]
                 return ["Int", 0]
@@ -85,6 +285,12 @@ class BinOp(Node):
                 return ["String", str(direita[1]) + str(esquerda[1])]
         if self.value == "/":
             if direita[0] == "Int" and esquerda[0] == "Int":
+                #Assembly.printToFile(self, 'teseee.txt', "POP EAX")
+                Assembly.joinCode("POP EAX")
+                #Assembly.printToFile(self, 'teseee.txt', "IDIV EAX, EBX")
+                Assembly.joinCode("IDIV EAX, EBX")
+                #Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
+                Assembly.joinCode("MOV EBX, EAX")
                 return ["Int", direita[1] // esquerda[1]]
 
 class UnOp(Node):
@@ -92,6 +298,7 @@ class UnOp(Node):
     def  __init__(self, value, children):
         self.value = value
         self.children = children
+        self.id = Node.new_id()
     
     def evaluate(self):
         
@@ -113,14 +320,20 @@ class IntVal(Node):
     
     def __init__(self, value):
         self.value = value
+        self.id = Node.new_id()
     
     def evaluate(self):
+        #utiliza a classe assembly para escrever em um arquivo
+        #Assembly.printToFile(self, 'teseee.txt', 'MOV EBX, ' + str(self.value))
+        Assembly.joinCode('MOV EBX, ' + str(self.value))
+
         return ["Int", int(self.value)]
     
 class StringVal(Node):
     
     def __init__(self, value):
         self.value = value
+        self.id = Node.new_id()
     
     def evaluate(self):
         return ["String", str(self.value)]
@@ -128,6 +341,7 @@ class StringVal(Node):
 class NoOp(Node):
     
     def __init__(self):
+        self.id = Node.new_id()
         pass
     
     def evaluate(self):
@@ -137,47 +351,12 @@ class Identifier(Node):
     
     def __init__(self, value):
         self.value = value
+        self.id = Node.new_id()
     
     def evaluate(self):
-        return SymbolTable.getter(self.value)
-        
-class SymbolTable:
-     
-    table = {}
-                
-    def getter(key):
-        #verificar se a chave existe, senão, erro
-        if key in SymbolTable.table:
-            return SymbolTable.table[key]
-        
-        sys.stderr.write('ERROR: KEY NOT DECLARED')
-        sys.exit(1)
-        
-    def setter(key, value):
-        #printa o key e value
-        
-        
-        #verificar se a o value[0] guardado tem o mesmo tipo do novo value a ser guardado, senao, erro
-        if key in SymbolTable.table:
-            if SymbolTable.table[key][0] != value[0]:
-                sys.stderr.write('ERROR: VALUE TYPE NOT MATCHING')
-                sys.exit(1)
-                
-            SymbolTable.table[key] = value
-            return
-
-        sys.stderr.write('ERROR: KEY NOT DECLARED')
-        sys.exit(1)
-        
-    def create(key, value):
-        
-        #verificar se a chave existe, senão, erro
-        if key in SymbolTable.table:
-            sys.stderr.write('ERROR: KEY ALREADY EXISTS')
-            sys.exit(1)
-            
-        SymbolTable.table[key] = value        
-        
+        #Assembly.printToFile(self, 'teseee.txt', 'MOV EBX, [EBP' + str(SymbolTable.getter(self.value)[2]) + ']')
+        Assembly.joinCode('MOV EBX, [EBP' + str(SymbolTable.getter(self.value)[2]) + ']')
+        return SymbolTable.getter(self.value)        
         
 class Assignment(Node):
     
@@ -185,23 +364,31 @@ class Assignment(Node):
         
         self.value = value
         self.children = children
+        self.id = Node.new_id()
     
     def evaluate(self):
         SymbolTable.setter(self.value, self.children[0].evaluate())
-        
+        #Assembly.printToFile(self, 'teseee.txt', 'MOV [EBP' + str(SymbolTable.getter(self.value)[2]) + '], EBX')
+        Assembly.joinCode('MOV [EBP' + str(SymbolTable.getter(self.value)[2]) + '], EBX')
 
 class VarDec(Node):
     
     def __init__(self, value, children):
         self.value = value
         self.children = children
+        self.id = Node.new_id()
     
     def evaluate(self):
         if len(self.children) == 1:
             if self.value == "Int":
                 SymbolTable.create(self.children[0], [self.value, 0])  
+                #Assembly.printToFile(self, 'teseee.txt', 'PUSH DWORD 0')
+                Assembly.joinCode('PUSH DWORD 0')
             elif self.value == "String":
+                #Assembly.printToFile(self, 'teseee.txt', 'PUSH DWORD 0')
+                Assembly.joinCode('PUSH DWORD 0')
                 SymbolTable.create(self.children[0], [self.value, ""]) 
+                
         elif len(self.children) == 2:
             if self.value == "Int" and self.children[1].evaluate()[0] == "Int":
                 SymbolTable.create(self.children[0], [self.value, self.children[1].evaluate()[1]])
@@ -211,6 +398,7 @@ class VarDec(Node):
 class Read(Node):
     
     def __init__(self):
+        self.id = Node.new_id()
         pass
         
     def evaluate(self):
@@ -220,6 +408,7 @@ class Block(Node):
     
     def __init__(self, children):
         self.children = children
+        self.id = Node.new_id()
 
     def evaluate(self):
         for child in self.children:
@@ -229,32 +418,66 @@ class While(Node):
     
     def __init__(self, children):
         self.children = children
+        self.id = Node.new_id()
     
     def evaluate(self):
         #print(self.children[0].evaluate())
-        while self.children[0].evaluate()[1]:
-            self.children[1].evaluate()
+        #Assembly.printToFile(self, 'teseee.txt', 'LOOP_' + str(self.id) + ':')
+        Assembly.joinCode('LOOP_' + str(self.id) + ':')
+        self.children[0].evaluate()
+        #Assembly.printToFile(self, 'teseee.txt', 'CMP EBX, False')
+        Assembly.joinCode('CMP EBX, False')
+        #Assembly.printToFile(self, 'teseee.txt', 'JE EXIT_' + str(self.id))
+        Assembly.joinCode('JE EXIT_' + str(self.id))
+        #while res_filho_0[1]:
+        self.children[1].evaluate()
+        #Assembly.printToFile(self, 'teseee.txt', 'JMP LOOP_' + str(self.id))
+        Assembly.joinCode('JMP LOOP_' + str(self.id))
+        #Assembly.printToFile(self, 'teseee.txt', 'EXIT_' + str(self.id) + ':')
+        Assembly.joinCode('EXIT_' + str(self.id) + ':')
+
             
 class If(Node):
     
     def __init__(self, children):
         self.children = children
+        self.id = Node.new_id()
     
     def evaluate(self):
-        #print(self.children[0].evaluate()[1])
-        if self.children[0].evaluate()[1]:
-            self.children[1].evaluate()
-        else:
-            if len(self.children) == 3:
+        #Assembly.printToFile(self, 'teseee.txt', 'IF_' + str(self.id) + ':')
+        Assembly.joinCode('IF_' + str(self.id) + ':')
+        if_condition = self.children[0].evaluate()[1]
+        #Assembly.printToFile(self, 'teseee.txt', 'CMP EBX, False')
+        Assembly.joinCode('CMP EBX, False')
+        #Assembly.printToFile(self, 'teseee.txt', 'JE ELSE_' + str(self.id))
+        Assembly.joinCode('JE ELSE_' + str(self.id))
+        #if if_condition:
+        self.children[1].evaluate()
+        #Assembly.printToFile(self, 'teseee.txt', 'JMP END_IF_' + str(self.id))
+        Assembly.joinCode('JMP END_IF_' + str(self.id))
+        #Assembly.printToFile(self, 'teseee.txt', 'ELSE_' + str(self.id))
+        Assembly.joinCode('ELSE_' + str(self.id))
+        #else:
+        if len(self.children) == 3:
                 #basicamente verifica se tem um else, o if não obrigatoriamente vai ser verdade
-                self.children[2].evaluate()
+            self.children[2].evaluate()
+        #Assembly.printToFile(self, 'teseee.txt', 'END_IF_' + str(self.id))
+        Assembly.joinCode('END_IF_' + str(self.id))
+        
 
 class Print(Node):
         def __init__(self, children):
             self.children = children
+            self.id = Node.new_id()
         
         def evaluate(self):
             pt1 = self.children[0].evaluate()
+            #Assembly.printToFile(self, 'teseee.txt', 'PUSH EBX')
+            Assembly.joinCode('PUSH EBX')
+            #Assembly.printToFile(self, 'teseee.txt', 'CALL print')
+            Assembly.joinCode('CALL print')
+            #Assembly.printToFile(self, 'teseee.txt', 'POP EBX')
+            Assembly.joinCode('POP EBX')
             print(pt1[1])    
 class Token:
     
@@ -755,17 +978,22 @@ class Parse:
             sys.exit(1)
        
     @staticmethod
-    def run(code):
+    def run(code, archive_name):
+
         tokenizer = Tokenizer(code, 0)
         tokenizer.selectNext()
         
+        Assembly.setFileName(archive_name)
+
         arvore = Parse.ParseBlock(tokenizer)
         if tokenizer.next.type != 'EOF':
             sys.stderr.write('ERROR: EOF NOT FOUND')
             sys.exit(1)
             
-        return arvore
-
+        arvore.evaluate()
+        
+        Assembly.compileCode()
+        
 class PrePro:
     
     @staticmethod
@@ -779,9 +1007,13 @@ def read_file(file):
         return f.read()
 
 #string = 'test.txt'
+#archive_name = "testaa.jl"
+
 string = sys.argv[1]
+archive_name = sys.argv[0]
+
 test_files = read_file(string)
-Parse.run(PrePro.filter(test_files)).evaluate()
+Parse.run(PrePro.filter(test_files), archive_name)
 
     
     
