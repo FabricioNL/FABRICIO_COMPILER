@@ -977,7 +977,7 @@ class Parse:
         
         else:
             #printa o token que deu erro
-            sys.stderr.write('ERROR: TOKEN NOT FOUND: ' + codigo_fonte)
+            sys.stderr.write(codigo_fonte)
             #sys.stderr.write(codigo_fonte)
             sys.exit(1)
        
