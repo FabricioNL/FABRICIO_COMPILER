@@ -1011,13 +1011,14 @@ def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-#string = 'teste2.txt'
+#string = 'test1.txt'
 #archive_name = string
 
-string = sys.argv[1]
-archive_name = sys.argv[0]
+archive_name = sys.argv[1]
+# teste1.txt
+#teste1
 
-test_files = read_file(string)
+test_files = read_file(archive_name)
 Parse.run(PrePro.filter(test_files), archive_name)
 
     
