@@ -458,13 +458,13 @@ class If(Node):
         #Assembly.printToFile(self, 'teseee.txt', 'JMP END_IF_' + str(self.id))
         Assembly.joinCode('JMP END_IF_' + str(self.id))
         #Assembly.printToFile(self, 'teseee.txt', 'ELSE_' + str(self.id))
-        Assembly.joinCode('ELSE_' + str(self.id))
+        Assembly.joinCode('ELSE_' + str(self.id) + ':')
         #else:
         if len(self.children) == 3:
                 #basicamente verifica se tem um else, o if não obrigatoriamente vai ser verdade
             self.children[2].evaluate()
         #Assembly.printToFile(self, 'teseee.txt', 'END_IF_' + str(self.id))
-        Assembly.joinCode('END_IF_' + str(self.id))
+        Assembly.joinCode('END_IF_' + str(self.id) + ':')
         
 
 class Print(Node):
