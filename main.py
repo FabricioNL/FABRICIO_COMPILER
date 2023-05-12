@@ -821,13 +821,14 @@ class Parse:
         
         while tokenizer.next.type != 'EOF':
             children.append(Parse.ParseStatement(tokenizer))
+            tokenizer.selectNext()
             
         return Block(children)
     
     @staticmethod
     def ParseStatement(tokenizer):
         if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
-            tokenizer.selectNext()
+            #tokenizer.selectNext()
             return NoOp()
                 
         if tokenizer.next.value in LIST_RESERVED_WORDS and tokenizer.next.type == 'PRINTLN':
@@ -870,14 +871,14 @@ class Parse:
                     tokenizer.selectNext()
                     
                     if tokenizer.next.type == "QUEBRA_LINHA" and tokenizer.next.value == '\n':
-                        tokenizer.selectNext()
+                        #tokenizer.selectNext()
                         
                         children = [name]
                         
                         return VarDec("Int", children)
                     
                     elif tokenizer.next.type == "OPERATOR" and tokenizer.next.value == "=":
-                        tokenizer.selectNext()
+                        #tokenizer.selectNext()
                         
                         children = [name, Parse.ParseRelExpression(tokenizer)]
                         
@@ -889,14 +890,14 @@ class Parse:
                     tokenizer.selectNext()
                     
                     if tokenizer.next.type == "QUEBRA_LINHA" and tokenizer.next.value == '\n':
-                        tokenizer.selectNext()
+                        #tokenizer.selectNext()
                         
                         children = [name]
                         
                         return VarDec("String", children)
                     
                     elif tokenizer.next.type == "OPERATOR" and tokenizer.next.value == "=":
-                        tokenizer.selectNext()
+                        #tokenizer.selectNext()
                         
                         children = [name, Parse.ParseRelExpression(tokenizer)]
                         
@@ -977,8 +978,8 @@ class Parse:
         
         else:
             #printa o token que deu erro
-            sys.stderr.write('ERROR: NAO CONSEGUIU CONSUMIR O TOKEN')
-            #sys.stderr.write(codigo_fonte)
+            sys.stderr.write('ERROR: NAO CONSEGUIU CONSUMIR O TOKEN' + str(tokenizer.next.value))
+            sys.stderr.write(codigo_fonte)
             sys.exit(1)
        
     @staticmethod
@@ -1011,7 +1012,7 @@ def read_file(file):
     with open(file, 'r') as f:
         return f.read()
 
-#string = 'test142.txt'
+#string = 'teste2.txt'
 #archive_name = string
 
 string = sys.argv[1]
