@@ -1,6 +1,5 @@
 import sys 
 import re 
-#string = sys.argv[1]
 
 LIST_TERM = ['*','/', '&&']
 LIST_EXP = ['+','-','||', "."]
@@ -17,184 +16,13 @@ LIST_NUMBERS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 LIST_RESERVED_WORDS = ['println', 'if', 'else', 'while', 'for', 'int', 'float', 'char', 'string', 
                        'bool', 'true', 'false', 'return', 'break', 'continue', 'and', 'or', 'not']
 
-codigo_fonte = ""
-
-class Assembly:
-    code = ""
-    filename = ""
-
-    footer = """; interrupcao de saida
-    POP EBP
-    MOV EAX, 1
-    INT 0x80"""
-
-    header = """; constantes
-    SYS_EXIT equ 1
-    SYS_READ equ 3
-    SYS_WRITE equ 4
-    STDIN equ 0
-    STDOUT equ 1
-    True equ 1
-    False equ 0
-
-    segment .data
-
-    segment .bss  ; variaveis
-      res RESB 1
-
-    section .text
-      global _start
-
-    print:  ; subrotina print
-
-      PUSH EBP ; guarda o base pointer
-      MOV EBP, ESP ; estabelece um novo base pointer
-
-      MOV EAX, [EBP+8] ; 1 argumento antes do RET e EBP
-      XOR ESI, ESI
-
-    print_dec: ; empilha todos os digitos
-      MOV EDX, 0
-      MOV EBX, 0x000A
-      DIV EBX
-      ADD EDX, '0'
-      PUSH EDX
-      INC ESI ; contador de digitos
-      CMP EAX, 0
-      JZ print_next ; quando acabar pula
-      JMP print_dec
-
-    print_next:
-      CMP ESI, 0
-      JZ print_exit ; quando acabar de imprimir
-      DEC ESI
-
-      MOV EAX, SYS_WRITE
-      MOV EBX, STDOUT
-
-      POP ECX
-      MOV [res], ECX
-      MOV ECX, res
-
-      MOV EDX, 1
-      INT 0x80
-      JMP print_next
-
-    print_exit:
-      POP EBP
-      RET
-
-    ; subrotinas if/while
-    binop_je:
-      JE binop_true
-      JMP binop_false
-
-    binop_jg:
-      JG binop_true
-      JMP binop_false
-
-    binop_jl:
-      JL binop_true
-      JMP binop_false
-
-    binop_false:
-      MOV EBX, False
-      JMP binop_exit
-    binop_true:
-      MOV EBX, True
-    binop_exit:
-      RET
-
-    _start:
-
-      PUSH EBP ; guarda o base pointer
-      MOV EBP, ESP ; estabelece um novo base pointer
-      
-      ; codigo gerado pelo compilador
-      """
-
-    def __init__(self, filename):
-        self.filename = filename
-
-    @staticmethod
-    def joinCode(string):
-        Assembly.code += string + '\n'
-
-    @staticmethod
-    def getCode():
-        return Assembly.code
-    
-    @staticmethod
-    def setFileName(filename):
-        Assembly.filename = filename.split('.')[0] + '.asm'
-        #print(Assembly.filename)
-    
-    @staticmethod
-    def compileCode():
-        with open(Assembly.filename, 'a') as file:
-            file.write(Assembly.header + '\n' + Assembly.code + '\n' + Assembly.footer + '\n')
-    
-    @staticmethod
-    def printToFile(self, filename, code):
-        with open(filename, 'a') as file:
-            file.write(code + '\n')
-
-
-class SymbolTable:
-     
-    table = {}
-    addr = -4
-                
-    def getter(key):
-        #verificar se a chave existe, senão, erro
-        if key in SymbolTable.table:
-            return SymbolTable.table[key]
-        
-        sys.stderr.write('ERROR: KEY NOT DECLARED')
-        sys.exit(1)
-        
-    def setter(key, value):
-        #printa o key e value
-        
-        #verificar se a o value[0] guardado tem o mesmo tipo do novo value a ser guardado, senao, erro
-        if key in SymbolTable.table:
-            if SymbolTable.table[key][0] != value[0]:
-                sys.stderr.write('ERROR: VALUE TYPE NOT MATCHING')
-                sys.exit(1)
-
-            old_value_addr = SymbolTable.table[key][2]
-            value.append(old_value_addr)
-            SymbolTable.table[key] = value
-            return
-
-        sys.stderr.write('ERROR: KEY NOT DECLARED')
-        sys.exit(1)
-        
-    def create(key, value):
-        
-        #verificar se a chave existe, senão, erro
-        if key in SymbolTable.table:
-            sys.stderr.write('ERROR: KEY ALREADY EXISTS')
-            sys.exit(1)
-            
-        value.append(SymbolTable.addr)
-        #print(value)
-        SymbolTable.table[key] = value
-        SymbolTable.addr -= 4
-
 class Node:
     
-    id = 0
-
     def __init__(self, value):
         self.value = value
         self.children = []
         
-    def new_id():
-        Node.id += 1
-        return Node.id
-    
-    def evaluate(self):
+    def evaluate(self, symboltable):
         pass            
     
 
@@ -203,82 +31,49 @@ class BinOp(Node):
     def __init__(self, value, children):
         self.value = value
         self.children = children
-        self.id = Node.new_id()
-    def evaluate(self):
-        direita = self.children[0].evaluate()
-        
-        
-        Assembly.joinCode("PUSH EBX")
-        esquerda = self.children[1].evaluate()
-        Assembly.joinCode("POP EAX")
 
+    def evaluate(self, symboltable):
+        direita = self.children[0].evaluate(symboltable)
+        
+        #teste
+        #direita = direita[1].evaluate(symboltable)
+        
+        esquerda = self.children[1].evaluate(symboltable)
+        
         if self.value == "+":
             if direita[0] == "Int" and esquerda[0] == "Int":
-                
-                ##Assembly.printToFile(self, 'teseee.txt', "ADD EAX, EBX")
-                Assembly.joinCode("ADD EAX, EBX")
-                ##Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
-                Assembly.joinCode("MOV EBX, EAX")
-
                 return ["Int", direita[1] + esquerda[1]]
         if self.value == "-":
             if direita[0] == "Int" and esquerda[0] == "Int":
-                
-                ##Assembly.printToFile(self, 'teseee.txt', "SUB EAX, EBX")
-                Assembly.joinCode("SUB EAX, EBX")
-                ###Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
-                Assembly.joinCode("MOV EBX, EAX")
                 return ["Int", direita[1] - esquerda[1]]
         if self.value == "*":
             if direita[0] == "Int" and esquerda[0] == "Int":
-                
-                ##Assembly.printToFile(self, 'teseee.txt', "IMUL EAX, EBX")
-                Assembly.joinCode("IMUL EAX, EBX")
-                ##Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
-                Assembly.joinCode("MOV EBX, EAX")
                 return ["Int", direita[1] * esquerda[1]]
         if self.value == "==":
-            ##Assembly.printToFile(self, 'teseee.txt', "CMP EAX, EBX")
-            Assembly.joinCode("CMP EAX, EBX")
-            ##Assembly.printToFile(self, 'teseee.txt', "CALL binop_je")
-            Assembly.joinCode("CALL binop_je")
-
             if direita[1] == esquerda[1]:
                 return ["Int", 1]
             return ["Int", 0]
+                #return ["Int", direita[1] == esquerda[1]]
         if self.value == "<":
-            ##Assembly.printToFile(self, 'teseee.txt', "CMP EAX, EBX")
-            Assembly.joinCode("CMP EAX, EBX")
-            ##Assembly.printToFile(self, 'teseee.txt', "CALL binop_jl")
-            Assembly.joinCode("CALL binop_jl")
+            #if direita[0] == "Int" and esquerda[0] == "Int":
             if direita[1] < esquerda[1]:
                 return ["Int", 1]
             return ["Int", 0]
                 #return ["Int", direita[1] < esquerda[1]]
         if self.value == ">":
-            ##Assembly.printToFile(self, 'teseee.txt', "CMP EAX, EBX")
-            Assembly.joinCode("CMP EAX, EBX")
-            #Assembly.printToFile(self, 'teseee.txt', "CALL binop_jg")
-            Assembly.joinCode("CALL binop_jg")
+            #if direita[0] == "Int" and esquerda[0] == "Int":
             if direita[1] > esquerda[1]:
                 return ["Int", 1]
             return ["Int", 0]
+                #return ["Int", direita[1] > esquerda[1]]
         if self.value == "&&":
             if direita[0] == "Int" and esquerda[0] == "Int":
-                #Assembly.printToFile(self, 'teseee.txt', "AND EAX, EBX")
-                Assembly.joinCode("AND EAX, EBX")
-                #Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
-                Assembly.joinCode("MOV EBX, EAX")
                 if direita[1] and esquerda[1]:
                     return ["Int", 1]
                 return ["Int", 0]
                 #return ["Int", direita[1] and esquerda[1]]
         if self.value == "||":
             if direita[0] == "Int" and esquerda[0] == "Int":
-                #Assembly.printToFile(self, 'teseee.txt', "AND EAX, EBX")
-                Assembly.joinCode("AND EAX, EBX")
-                #Assembly.printToFile(self, 'teseee.txt', "OR EBX, EAX")
-                Assembly.joinCode("OR EBX, EAX")
                 if direita[1] or esquerda[1]:
                     return ["Int", 1]
                 return ["Int", 0]
@@ -287,12 +82,6 @@ class BinOp(Node):
                 return ["String", str(direita[1]) + str(esquerda[1])]
         if self.value == "/":
             if direita[0] == "Int" and esquerda[0] == "Int":
-                #Assembly.printToFile(self, 'teseee.txt', "POP EAX")
-                Assembly.joinCode("POP EAX")
-                #Assembly.printToFile(self, 'teseee.txt', "IDIV EAX, EBX")
-                Assembly.joinCode("IDIV EAX, EBX")
-                #Assembly.printToFile(self, 'teseee.txt', "MOV EBX, EAX")
-                Assembly.joinCode("MOV EBX, EAX")
                 return ["Int", direita[1] // esquerda[1]]
 
 class UnOp(Node):
@@ -300,11 +89,10 @@ class UnOp(Node):
     def  __init__(self, value, children):
         self.value = value
         self.children = children
-        self.id = Node.new_id()
     
-    def evaluate(self):
+    def evaluate(self, symboltable):
         
-        no = self.children[0].evaluate()
+        no = self.children[0].evaluate(symboltable)
         
         if no[0] == "Int":
             if self.value == "!":
@@ -322,43 +110,107 @@ class IntVal(Node):
     
     def __init__(self, value):
         self.value = value
-        self.id = Node.new_id()
     
-    def evaluate(self):
-        #utiliza a classe assembly para escrever em um arquivo
-        #Assembly.printToFile(self, 'teseee.txt', 'MOV EBX, ' + str(self.value))
-        Assembly.joinCode('MOV EBX, ' + str(self.value))
-
+    def evaluate(self, symboltable):
         return ["Int", int(self.value)]
     
 class StringVal(Node):
     
     def __init__(self, value):
         self.value = value
-        self.id = Node.new_id()
     
-    def evaluate(self):
+    def evaluate(self, symboltable):
         return ["String", str(self.value)]
 
 class NoOp(Node):
     
     def __init__(self):
-        self.id = Node.new_id()
         pass
     
-    def evaluate(self):
+    def evaluate(self, symboltable):
         pass
 
 class Identifier(Node):
     
     def __init__(self, value):
         self.value = value
-        self.id = Node.new_id()
     
-    def evaluate(self):
-        #Assembly.printToFile(self, 'teseee.txt', 'MOV EBX, [EBP' + str(SymbolTable.getter(self.value)[2]) + ']')
-        Assembly.joinCode('MOV EBX, [EBP' + str(SymbolTable.getter(self.value)[2]) + ']')
-        return SymbolTable.getter(self.value)        
+    def evaluate(self, symboltable):
+        return symboltable.getter(self.value)
+    
+
+class FuncTable:
+     
+    table = {}
+                
+    def getter(key):
+        #verificar se a chave existe, senão, erro
+        if key in FuncTable.table:
+            return FuncTable.table[key]
+        
+        sys.stderr.write('ERROR: KEY NOT DECLARED')
+        sys.exit(1)
+        
+    def setter(key, value):
+        #printa o key e value
+        
+        #verificar se a o value[0] guardado tem o mesmo tipo do novo value a ser guardado, senao, erro
+        if key in FuncTable.table:
+            if FuncTable.table[key][0] != value[0]:
+                sys.stderr.write('ERROR: VALUE TYPE NOT MATCHING')
+                sys.exit(1)
+                
+            FuncTable.table[key] = value
+            return
+
+        sys.stderr.write('ERROR: KEY NOT DECLARED')
+        sys.exit(1)
+    
+    def create(key, value):  
+        #verificar se a chave existe, senão, erro
+        if key in FuncTable.table:
+            sys.stderr.write('ERROR: KEY ALREADY EXISTS')
+            sys.exit(1)
+            
+        FuncTable.table[key] = value 
+        
+class SymbolTable:
+     
+    
+    def __init__(self):
+        self.table = {}
+                
+    def getter(self, key):
+        #verificar se a chave existe, senão, erro
+        if key in self.table:
+            return self.table[key]
+        
+        sys.stderr.write('ERROR: KEY NOT DECLARED')
+        sys.exit(1)
+        
+    def setter(self, key, value):
+        #printa o key e value
+        #verificar se a o value[0] guardado tem o mesmo tipo do novo value a ser guardado, senao, erro
+        if key in self.table:
+            if self.table[key][0] != value[0]:
+                sys.stderr.write('ERROR: VALUE TYPE NOT MATCHING')
+                sys.exit(1)
+                
+            self.table[key] = value
+            return
+
+        sys.stderr.write('ERROR: KEY NOT DECLARED')
+        sys.exit(1)
+        
+    def create(self, key, value):
+        
+        #verificar se a chave existe, senão, erro
+        if key in self.table:
+            sys.stderr.write('ERROR: KEY ALREADY EXISTS')
+            sys.exit(1)
+            
+        self.table[key] = value        
+        
         
 class Assignment(Node):
     
@@ -366,120 +218,122 @@ class Assignment(Node):
         
         self.value = value
         self.children = children
-        self.id = Node.new_id()
     
-    def evaluate(self):
-        SymbolTable.setter(self.value, self.children[0].evaluate())
-        #Assembly.printToFile(self, 'teseee.txt', 'MOV [EBP' + str(SymbolTable.getter(self.value)[2]) + '], EBX')
-        Assembly.joinCode('MOV [EBP' + str(SymbolTable.getter(self.value)[2]) + '], EBX')
+    def evaluate(self, symboltable):
+        symboltable.setter(self.value, self.children[0].evaluate(symboltable))
+        
 
 class VarDec(Node):
     
     def __init__(self, value, children):
         self.value = value
         self.children = children
-        self.id = Node.new_id()
     
-    def evaluate(self):
+    def evaluate(self, symboltable):
         if len(self.children) == 1:
             if self.value == "Int":
-                SymbolTable.create(self.children[0], [self.value, 0])  
-                #Assembly.printToFile(self, 'teseee.txt', 'PUSH DWORD 0')
-                Assembly.joinCode('PUSH DWORD 0')
+                symboltable.create(self.children[0], [self.value, 0])  
             elif self.value == "String":
-                #Assembly.printToFile(self, 'teseee.txt', 'PUSH DWORD 0')
-                Assembly.joinCode('PUSH DWORD 0')
-                SymbolTable.create(self.children[0], [self.value, ""]) 
-                
+                symboltable.create(self.children[0], [self.value, ""]) 
         elif len(self.children) == 2:
-            if self.value == "Int" and self.children[1].evaluate()[0] == "Int":
-                SymbolTable.create(self.children[0], [self.value, self.children[1].evaluate()[1]])
-            if self.value == "String" and self.children[1].evaluate()[0] == "String":
-                SymbolTable.create(self.children[0], [self.value, self.children[1].evaluate()[1]])
+            if self.value == "Int" and self.children[1].evaluate(symboltable)[0] == "Int":
+                symboltable.create(self.children[0], [self.value, self.children[1].evaluate(symboltable)[1]])
+            if self.value == "String" and self.children[1].evaluate(symboltable)[0] == "String":
+                symboltable.create(self.children[0], [self.value, self.children[1].evaluate(symboltable)[1]])
+                
+class FuncDec(Node):
+    
+    def __init__(self, value, children):
+        self.value = value
+        self.children = children
+        
+    def evaluate(self, symboltable):
+        FuncTable.create(self.children[0], self)
+    
+
+class FuncCall(Node):
+    
+    def __init__(self, value, children):
+        self.value = value
+        self.children = children
+    
+    def evaluate(self, symboltable):
+        node_func = FuncTable.getter(self.value)
+        local_sb = SymbolTable()
+        
+        identifier, args, block = node_func.children
+        
+        if len(args) != len(self.children) and self.children[0] != None:
+            sys.stderr.write('ERROR: NUMBER OF ARGUMENTS NOT MATCHING')
+            sys.exit(1)
+            
+        for var, arg in zip(args, self.children):
+            var.evaluate(local_sb)
+            #valor = 
+            local_sb.setter(var.children[0], arg.evaluate(symboltable))
+        
+        val = block.evaluate(local_sb)
+        
+        return val
             
 class Read(Node):
     
     def __init__(self):
-        self.id = Node.new_id()
         pass
         
-    def evaluate(self):
+    def evaluate(self, symboltable):
         return ["Int", int(input())]
     
 class Block(Node):
     
     def __init__(self, children):
         self.children = children
-        self.id = Node.new_id()
 
-    def evaluate(self):
+    def evaluate(self, symboltable):
         for child in self.children:
-            child.evaluate()
+            #vai quebrar quando achar um return aqui
+            if type(child) == Return:
+                return child.evaluate(symboltable)    
+            child.evaluate(symboltable)
 
 class While(Node):
     
     def __init__(self, children):
         self.children = children
-        self.id = Node.new_id()
     
-    def evaluate(self):
-        #print(self.children[0].evaluate())
-        #Assembly.printToFile(self, 'teseee.txt', 'LOOP_' + str(self.id) + ':')
-        Assembly.joinCode('LOOP_' + str(self.id) + ':')
-        self.children[0].evaluate()
-        #Assembly.printToFile(self, 'teseee.txt', 'CMP EBX, False')
-        Assembly.joinCode('CMP EBX, False')
-        #Assembly.printToFile(self, 'teseee.txt', 'JE EXIT_' + str(self.id))
-        Assembly.joinCode('JE EXIT_' + str(self.id))
-        #while res_filho_0[1]:
-        self.children[1].evaluate()
-        #Assembly.printToFile(self, 'teseee.txt', 'JMP LOOP_' + str(self.id))
-        Assembly.joinCode('JMP LOOP_' + str(self.id))
-        #Assembly.printToFile(self, 'teseee.txt', 'EXIT_' + str(self.id) + ':')
-        Assembly.joinCode('EXIT_' + str(self.id) + ':')
-
+    def evaluate(self, symboltable):
+        #print(self.children[0].evaluate(symboltable))
+        while self.children[0].evaluate(symboltable)[1]:
+            self.children[1].evaluate(symboltable)
             
 class If(Node):
     
     def __init__(self, children):
         self.children = children
-        self.id = Node.new_id()
     
-    def evaluate(self):
-        #Assembly.printToFile(self, 'teseee.txt', 'IF_' + str(self.id) + ':')
-        Assembly.joinCode('IF_' + str(self.id) + ':')
-        if_condition = self.children[0].evaluate()[1]
-        #Assembly.printToFile(self, 'teseee.txt', 'CMP EBX, False')
-        Assembly.joinCode('CMP EBX, False')
-        #Assembly.printToFile(self, 'teseee.txt', 'JE ELSE_' + str(self.id))
-        Assembly.joinCode('JE ELSE_' + str(self.id))
-        #if if_condition:
-        self.children[1].evaluate()
-        #Assembly.printToFile(self, 'teseee.txt', 'JMP END_IF_' + str(self.id))
-        Assembly.joinCode('JMP END_IF_' + str(self.id))
-        #Assembly.printToFile(self, 'teseee.txt', 'ELSE_' + str(self.id))
-        Assembly.joinCode('ELSE_' + str(self.id) + ':')
-        #else:
-        if len(self.children) == 3:
+    def evaluate(self, symboltable):
+        #print(self.children[0].evaluate(symboltable)[1])
+        if self.children[0].evaluate(symboltable)[1]:
+            self.children[1].evaluate(symboltable)
+        else:
+            if len(self.children) == 3:
                 #basicamente verifica se tem um else, o if não obrigatoriamente vai ser verdade
-            self.children[2].evaluate()
-        #Assembly.printToFile(self, 'teseee.txt', 'END_IF_' + str(self.id))
-        Assembly.joinCode('END_IF_' + str(self.id) + ':')
+                self.children[2].evaluate(symboltable)
+
+class Return(Node):
         
+    def __init__(self, children):
+        self.children = children
+    
+    def evaluate(self, symboltable):
+        return self.children.evaluate(symboltable)
 
 class Print(Node):
         def __init__(self, children):
             self.children = children
-            self.id = Node.new_id()
         
-        def evaluate(self):
-            pt1 = self.children[0].evaluate()
-            #Assembly.printToFile(self, 'teseee.txt', 'PUSH EBX')
-            Assembly.joinCode('PUSH EBX')
-            #Assembly.printToFile(self, 'teseee.txt', 'CALL print')
-            Assembly.joinCode('CALL print')
-            #Assembly.printToFile(self, 'teseee.txt', 'POP EBX')
-            Assembly.joinCode('POP EBX')
+        def evaluate(self, symboltable):
+            pt1 = self.children[0].evaluate(symboltable)
             print(pt1[1])    
 class Token:
     
@@ -539,6 +393,11 @@ class Tokenizer:
             self.next = Token("OPERATOR", ".")
             self.position = self.position + 1
             return
+        
+        elif self.source[self.position] == ',':
+            self.next = Token("AND_ARG", ",")
+            self.position = self.position + 1
+            return    
             
         elif self.source[self.position] == '(': # se for abrir par
             self.next = Token("OPERATOR", "(")
@@ -657,7 +516,15 @@ class Tokenizer:
             elif value == "String":
                 self.next = Token("TYPE", value)
                 return
-            
+
+            elif value == "function":
+                self.next = Token("FUNCTION", value)
+                return
+    
+            elif value == "return":
+                self.next = Token("RETURN", value)
+                return
+
             else:
                 self.next = Token("IDENTIFIER", value)
                 return
@@ -679,10 +546,36 @@ class Parse:
             return intval
         
         if tokenizer.next.type == 'IDENTIFIER':
+            
             name = tokenizer.next.value
             tokenizer.selectNext()
-            identi = Identifier(name)
-            return identi
+            
+            if (tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '('):
+                tokenizer.selectNext()
+                
+                filhos = []
+                
+                #o erro tá aqui
+                while tokenizer.next.value == ',' or len(filhos) == 0:
+                    if tokenizer.next.value == ",":
+                        tokenizer.selectNext()
+                    
+                    expression = Parse.ParseRelExpression(tokenizer)
+                    filhos.append(expression)
+                
+                if (tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == ')'):
+                    tokenizer.selectNext()
+                    
+                    call = FuncCall(name, filhos)
+                    return call
+            
+                else:
+                    sys.stderr.write('ERROR: PARENTHESIS NOT CLOSED')
+                    sys.exit(1)
+            
+            else:
+                identi = Identifier(name)
+                return identi
         
         if tokenizer.next.type == 'STRING':
             name = tokenizer.next.value
@@ -828,7 +721,6 @@ class Parse:
     @staticmethod
     def ParseStatement(tokenizer):
         if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
-            #tokenizer.selectNext()
             return NoOp()
                 
         if tokenizer.next.value in LIST_RESERVED_WORDS and tokenizer.next.type == 'PRINTLN':
@@ -850,7 +742,6 @@ class Parse:
                 sys.stderr.write('ERROR: PARENTHESIS NOT OPENED')
                 sys.exit(1)
     
-        
         if tokenizer.next.type == 'IDENTIFIER':
             name = tokenizer.next.value
             tokenizer.selectNext()
@@ -902,9 +793,32 @@ class Parse:
                         children = [name, Parse.ParseRelExpression(tokenizer)]
                         
                         return VarDec("String", children)
+            
+            elif (tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == '('):
+                    tokenizer.selectNext()
                     
+                    filhos = []
+                    
+                    #ponto de atencao
+                    while tokenizer.next.type == ',' or len(filhos) == 0  and tokenizer.next.type != "OPERATOR" and tokenizer.next.value != ")":
+                        if tokenizer.next.value == ",":
+                            tokenizer.selectNext()
+                            
+                        expression = Parse.ParseRelExpression(tokenizer)
+                        filhos.append(expression)
+                    
+                    if (tokenizer.next.type == 'OPERATOR' and tokenizer.next.value == ')'):
+                        tokenizer.selectNext()
+                        
+                        call = FuncCall(name, filhos)
+                        return call
+                    
+                    else:
+                        sys.stderr.write('ERROR: PARENTHESIS NOT CLOSED')
+                        sys.exit(1)
+            
             else:
-                sys.stderr.write('ERROR: EQUALS NOT FOUND')
+                sys.stderr.write('ERROR: NOR EQUALS NOR OPEN PARENTHESIS FOUND')
                 sys.exit(1)
                 
         if tokenizer.next.value in LIST_RESERVED_WORDS and tokenizer.next.type == 'IF':
@@ -976,50 +890,158 @@ class Parse:
                 sys.stderr.write('ERROR: \\n NOT FOUND (WHILE)')
                 sys.exit(1)
         
+        if tokenizer.next.type == "FUNCTION" and tokenizer.next.value == "function":
+            tokenizer.selectNext()
+            
+            if tokenizer.next.type == "IDENTIFIER":
+                name = tokenizer.next.value
+                tokenizer.selectNext()
+                
+                if tokenizer.next.type == "OPERATOR" and tokenizer.next.value == "(":
+                    tokenizer.selectNext()
+                    
+                    filhos = []
+                    
+                    #ponto de atencao
+                    while (tokenizer.next.value == "," or len(filhos) == 0) and tokenizer.next.type != "OPERATOR" and tokenizer.next.value != ")":
+                        if tokenizer.next.value == ",":
+                            tokenizer.selectNext()
+                        
+                        if tokenizer.next.type == "IDENTIFIER":
+                            name_var = tokenizer.next.value
+                            tokenizer.selectNext()
+                            
+                            if tokenizer.next.value == "::" and tokenizer.next.type == "OPERATOR":
+                                tokenizer.selectNext()
+                                
+                                if tokenizer.next.type == "TYPE" and tokenizer.next.value == "Int":
+                                    filhos.append(VarDec("Int", [name_var]))
+                                    tokenizer.selectNext()
+                                
+                                elif tokenizer.next.type == "TYPE" and tokenizer.next.value == "String":
+                                    filhos.append(VarDec("String", [name_var]))
+                                    tokenizer.selectNext()
+                                
+                                else:
+                                    sys.stderr.write('ERROR: TYPE NOT FOUND')
+                                    sys.exit(1)
+                    
+                    
+                    #precisa de um select next
+                    #tokenizer.selectNext()
+                    
+                    if tokenizer.next.type == "OPERATOR" and tokenizer.next.value == ")":
+                        tokenizer.selectNext()
+                        
+                        if tokenizer.next.type == "OPERATOR" and tokenizer.next.value == "::":
+                            tokenizer.selectNext()
+                            
+                            if tokenizer.next.type == "TYPE" and tokenizer.next.value == "Int":
+                                
+                                functype = tokenizer.next.value
+                                tokenizer.selectNext()
+                                
+                                if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
+                                    tokenizer.selectNext()
+                
+                                    while_children = []
+                
+                                    while tokenizer.next.type != 'END':
+                                        while_children.append(Parse.ParseStatement(tokenizer))
+                                        tokenizer.selectNext()
+                                    
+                                    #precisa consumir o END 
+                                    tokenizer.selectNext()
+                                    block_while = Block(while_children)
+                                    
+                                    return FuncDec(functype, [name, filhos, block_while])
+                                
+                                else:
+                                    sys.stderr.write('ERROR: \\n NOT FOUND (FUNCTION)')
+                                    sys.exit(1)
+                            
+                            elif tokenizer.next.type == "TYPE" and tokenizer.next.value == "String":
+                                
+                                functype = tokenizer.next.value
+                                tokenizer.selectNext()
+                                
+                                if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
+                                    tokenizer.selectNext()
+                
+                                    while_children = []
+                
+                                    while tokenizer.next.type != 'END':
+                                        while_children.append(Parse.ParseStatement(tokenizer))
+                                        tokenizer.selectNext()
+                                    
+                                    #precisa consumir o END 
+                                    tokenizer.selectNext()
+                                    block_while = Block(while_children)
+                                    
+                                    return FuncDec(functype, [name, filhos, block_while])
+                                
+                                else:
+                                    sys.stderr.write('ERROR: \\n NOT FOUND (FUNCTION)')
+                                    sys.exit(1)
+                            
+                            else:
+                                sys.stderr.write('ERROR: TYPE NOT FOUND')
+                                sys.exit(1)
+
+                        else:
+                            sys.stderr.write('ERROR: :: NOT FOUND')
+                            sys.exit(1)
+                           
+                    else: 
+                        sys.stderr.write('ERROR: ) NOT FOUND')
+                        sys.exit(1)                
+                
+        if tokenizer.next.type == "RETURN" and tokenizer.next.value == "return":
+            tokenizer.selectNext()
+            
+            expression = Parse.ParseRelExpression(tokenizer)
+            
+            #if tokenizer.next.value == '\n' and tokenizer.next.type == "QUEBRA_LINHA":
+            #    tokenizer.selectNext()
+                
+                #return Return(expression)
+            
+            #else:
+            #    sys.stderr.write('ERROR: \\n NOT FOUND (RETURN)')
+            #    sys.exit(1)
+            return Return(expression)
         else:
-            #printa o token que deu erro
-            sys.stderr.write('ERROR: NAO CONSEGUIU CONSUMIR O TOKEN' + str(tokenizer.next.value))
+            sys.stderr.write('ERROR: IDENTIFIER NOT FOUND')
             sys.exit(1)
        
     @staticmethod
-    def run(code, archive_name):
-
+    def run(code):
         tokenizer = Tokenizer(code, 0)
         tokenizer.selectNext()
         
-        Assembly.setFileName(archive_name)
-
         arvore = Parse.ParseBlock(tokenizer)
         if tokenizer.next.type != 'EOF':
             sys.stderr.write('ERROR: EOF NOT FOUND')
             sys.exit(1)
             
-        arvore.evaluate()
-        
-        Assembly.compileCode()
-        
+        return arvore
+    
 class PrePro:
     
     @staticmethod
     def filter(code):
         code_filtered = re.sub(r'#.*\n', '', code, flags=re.MULTILINE).replace("\s", "")
-        codigo_fonte = code_filtered 
         return code_filtered
-
-
-def read_file(file):
+    
+def read_file(file):                      
     with open(file, 'r') as f:
         return f.read()
 
-#string = 'test1.txt'
-#archive_name = string
-
-archive_name = sys.argv[1]
-# teste1.txt
-#teste1
-
-test_files = read_file(archive_name)
-Parse.run(PrePro.filter(test_files), archive_name)
+#string = 'teste1.jl'
+string = sys.argv[1]
+test_files = read_file(string)
+sb = SymbolTable()
+Parse.run(PrePro.filter(test_files)).evaluate(sb)
 
     
     
